@@ -1,0 +1,179 @@
+Browse
+======
+
+function browseListing():
+    displayListOfItems()
+
+    while true:
+        if userClicksItem:
+            displayItemDetails(clickedItem)
+            displayCommentSection(clickedItem)
+
+            while viewingItemDetails:
+                if userSubmitsComment:
+                    addCommentToItem(clickedItem, newComment)
+                    clearCommentForm()
+
+                if userClicksBack:
+                    break
+
+        if userExitsBrowsing:
+            break
+
+function addCommentToItem(item, comment):
+    item.comments.append(comment)
+    updateCommentDisplay(item)
+
+function clearCommentForm():
+    commentForm.text = ""
+
+
+Become User
+===========
+
+function applyForUser():
+    displayApplicationForm()
+
+    while formNotSubmitted:
+        if submitButtonClicked:
+            if missingFields():
+                showErrorMessage("Please fill all fields")
+            else if usernameExists(formData.username):
+                showErrorMessage("Username already taken")
+            else if emailExists(formData.email):
+                showErrorMessage("Email already registered")
+            else if !passesBottFilter(formData.botAnswer):
+                showErrorMessage("Incorrect bot filter answer")
+            else:
+                submitApplication(formData)
+                redirectToMainPage()
+                break
+
+function submitApplication(data):
+    newApplication = createApplication(data)
+    sendToSuperuserForReview(newApplication)
+
+function superuserReviewApplication(application):
+    displayApplicationDetails(application)
+    if superuserAccepts:
+        createNewUserAccount(application)
+        notifyApplicant("accepted")
+    else:
+        notifyApplicant("rejected")
+
+
+Balance Adjust
+==============
+function viewBalancePage():
+    displayCurrentBalance(user.balance)
+    displayTransactionForm()
+
+function processTransaction():
+    if formSubmitted:
+        if missingFields():
+            showError("Please fill all fields")
+        else if !validatePersonalInfo(formData):
+            showError("Invalid personal information")
+        else if formData.type == "withdraw" and formData.amount > user.balance:
+            showError("Insufficient funds")
+        else:
+            showConfirmationDialog()
+
+            if userConfirms:
+                if formData.type == "deposit":
+                    user.balance += formData.amount
+                else:
+                    user.balance -= formData.amount
+
+                updateBalance()
+                showTransactionConfirmation()
+                returnToPreviousPage()
+            else:
+                returnToTransactionForm()
+
+function updateBalance():
+    saveToDB(user.balance)
+    displayCurrentBalance(user.balance)
+
+
+List Item
+=========
+function displayListingPage():
+    showListingForm()
+
+function submitListing():
+    if allFieldsFilled() and fieldsValid():
+        newListing = createListing(formData)
+        addListingToDatabase(newListing)
+        updateListingDisplay()
+        returnToPreviousPage()
+    else:
+        showErrorMessage("Please fill all fields correctly")
+
+function createListing(data):
+    return {
+        name: data.itemName,
+        description: data.description,
+        price: data.price,
+        type: data.buyOrSell,
+        deadline: data.deadline,
+        seller: currentUser
+    }
+
+function validateFields(data):
+    if !isValidName(data.itemName) or
+       !isValidDescription(data.description) or
+       !isValidPrice(data.price) or
+       !isValidType(data.buyOrSell) or
+       !isValidDate(data.deadline):
+        return false
+    return true
+
+
+
+Direct Complaint
+================
+function viewPurchasedItem(item):
+    displayItemDetails(item)
+    showComplaintButton()
+
+function fileComplaint(item):
+    displayComplaintForm()
+
+    while true:
+        if userCancels:
+            returnToItemView(item)
+            break
+
+        if userSubmits:
+            if complaintFormEmpty():
+                showError("Please enter a complaint description")
+            else:
+                submitComplaint(item, complaintText)
+                showConfirmationMessage()
+                returnToItemView(item)
+                break
+
+function submitComplaint(item, complaintText):
+    newComplaint = createComplaint(item, complaintText)
+    addComplaintToSuperuserInbox(newComplaint)
+
+function createComplaint(item, text):
+    return {
+        item: item,
+        user: currentUser,
+        description: text,
+        timestamp: getCurrentTime()
+    }
+
+
+
+
+
+
+
+
+
+
+
+
