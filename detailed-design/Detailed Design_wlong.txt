@@ -167,6 +167,33 @@ function createComplaint(item, text):
     }
 
 
+Suspension
+==========
+function checkUserSuspension(user):
+    if countLowEvaluations(user) >= 3:
+        suspendUser(user)
+    else if userHasEnoughRatings(user) and isAverageRatingExtreme(user):
+        suspendUser(user)
+
+function countLowEvaluations(user):
+    return count(user.evaluations where rating < 2)
+
+function userHasEnoughRatings(user):
+    return user.givenRatings.count >= 3
+
+function isAverageRatingExtreme(user):
+    avgRating = calculateAverageRating(user)
+    return avgRating < 2 or avgRating > 4
+
+function suspendUser(user):
+    user.status = "suspended"
+    notifyUserOfSuspension(user)
+
+function removeSuspension(user):
+    if user.paidFine(50):
+        user.status = "active"
+    else if superuserReactivated(user):
+        user.status = "active"
 
 
 
