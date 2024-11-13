@@ -87,6 +87,7 @@ function processTransaction():
 
                 updateBalance()
                 showTransactionConfirmation()
+                askForReview()
                 returnToPreviousPage()
             else:
                 returnToTransactionForm()
@@ -94,6 +95,16 @@ function processTransaction():
 function updateBalance():
     saveToDB(user.balance)
     displayCurrentBalance(user.balance)
+
+
+
+Leaving Reviews
+===============
+function leaveReview(author, user, rating):
+    user.ratings.push({author, rating})
+    checkUserSuspension(author)
+    checkUserSuspension(user)
+
 
 
 List Item
@@ -194,13 +205,3 @@ function removeSuspension(user):
         user.status = "active"
     else if superuserReactivated(user):
         user.status = "active"
-
-
-
-
-
-
-
-
-
-
