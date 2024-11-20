@@ -1,0 +1,28 @@
+<h2>Welcome, <%= username %>!</h2>
+
+<h3>Your Items</h3>
+<% if (items.length > 0) { %>
+    <ul>
+        <% items.forEach(item => { %>
+            <li>
+                <strong><%= item.name %></strong> - $<%= item.starting_price %>
+                <p><%= item.description %></p>
+            </li>
+        <% }) %>
+    </ul>
+<% } else { %>
+    <p>You have not listed any items yet.</p>
+<% } %>
+
+<h3>Your Balance: $<%= balance %></h3>
+<form action="/auth/deposit" method="POST">
+    <label for="deposit">Deposit Amount:</label>
+    <input type="number" name="amount" id="deposit" required>
+    <button type="submit">Deposit</button>
+</form>
+
+<form action="/auth/withdraw" method="POST">
+    <label for="withdraw">Withdraw Amount:</label>
+    <input type="number" name="amount" id="withdraw" required>
+    <button type="submit">Withdraw</button>
+</form>

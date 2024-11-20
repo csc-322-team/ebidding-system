@@ -1,0 +1,14 @@
+<h2>Listings</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+    <% items.forEach(item => { %>
+        <div style="border: 1px solid #ccc; padding: 1rem; width: 300px;">
+            <% if (item.image_url) { %>
+                <img src="<%= item.image_url %>" alt="<%= item.name %>" style="width: 100%; height: auto;">
+            <% } %>
+            <h3><%= item.name %></h3>
+            <p><strong>Starting Price:</strong> $<%= item.starting_price %></p>
+            <p><strong>Deadline:</strong> <%= item.deadline_date %></p>
+            <a href="/items/<%= item.id %>">View Details</a>
+        </div>
+    <% }) %>
+</div>

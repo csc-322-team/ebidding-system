@@ -1,0 +1,28 @@
+<h2>Welcome, Superuser <%= username %>!</h2>
+
+<h3>Pending Users</h3>
+<ul>
+    <% pending.forEach(user => { %>
+        <li>
+            <strong><%= user.username %></strong>
+            <form action="/superuser/update-status" method="POST" style="display: inline;">
+                <input type="hidden" name="userId" value="<%= user.id %>">
+                <button type="submit" name="action" value="approved">Approve</button>
+                <button type="submit" name="action" value="rejected">Reject</button>
+            </form>
+        </li>
+    <% }) %>
+</ul>
+
+<h3>Approved Users</h3>
+<ul>
+    <% approved.forEach(user => { %>
+        <li>
+            <strong><%= user.username %></strong>
+            <form action="/superuser/update-status" method="POST" style="display: inline;">
+                <input type="hidden" name="userId" value="<%= user.id %>">
+                <button type="submit" name="action" value="suspended">Suspend</button>
+            </form>
+        </li>
+    <% }) %>
+</ul>
