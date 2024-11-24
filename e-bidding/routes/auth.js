@@ -1,30 +1,47 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
+const { Readable } = require( "stream" );
 const db = require('../database');
 const router = express.Router();
 
-router.post('/register', async (req, res) => {
-    const { username, password, role } = req.body;
+const activeCaptchas = {};
+const CAPTCHA_EXPIRE = 5 * 60 * 1000;
 
-    if (!username || !password) {
-        return res.status(400).json({ message: 'Username and password are required.' });
+router.post('/register', async (req, res) => {
+    const fields = req.body;
+    
+    const requiredFields = ['username', 'password', 'captchaId', 'captcha'];
+    for (const fieldName of requiredFields) {
+        if (!fields[fieldName]) return res.status(400).json({ message: 'Username, password, and captcha answer are required.' });
+    }
+    
+    if (fields.password !== fields.confirm) {
+        return res.status(400).json({ message: 'Input password does not match confirmed password.' });
     }
 
-    if (role && role !== 'V' && role !== 'S') {
+    if (fields.role && fields.role !== 'V' && fields.role !== 'S') {
         return res.status(400).json({ message: 'Invalid role.' });
     }
+    
+    const captchaAns = activeCaptchas[fields.captchaId];
+    if (!captchaAns) {
+        return res.status(400).json({ message: 'Captcha expired from inactivity.' });
+    }
+    if (captchaAns !== fields.captcha.toUpperCase()) {
+        return res.status(400).json({ message: 'Captcha answer is incorrect.' });
+    }
 
-    db.get('SELECT * FROM Users WHERE username = ?', [username], async (err, user) => {
+    db.get('SELECT * FROM Users WHERE username = ?', [fields.username], async (err, user) => {
         if (err) return res.status(500).json({ message: 'Database error.' });
         if (user) return res.status(400).json({ message: 'Username already exists.' });
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(fields.password, 10);
 
-        const status = role === 'S' ? 'approved' : 'pending';
+        const status = fields.role === 'S' ? 'approved' : 'pending';
 
         db.run(
             `INSERT INTO Users (username, password, role, status) VALUES (?, ?, ?, ?)`,
-            [username, hashedPassword, role || 'V', status],
+            [fields.username, hashedPassword, fields.role || 'V', status],
             function (err) {
                 if (err) {
                     return res.status(500).json({ message: 'Error registering user.' });
@@ -78,7 +95,13 @@ router.post('/login', (req, res) => {
 });
 
 router.get('/register', (req, res) => {
-    res.render('register');
+    // Generate a captcha and store it temporarily
+    const captchaId = Math.random().toString().slice(2);
+    const captchaText = Math.floor(Math.random() * 36 ** 6).toString(36).toUpperCase().padStart(6, '0');
+    activeCaptchas[captchaId] = captchaText;
+    setTimeout(() => delete activeCaptchas[captchaId], CAPTCHA_EXPIRE);
+
+    res.render('register', {captchaId});
 });
 
 router.get('/login', (req, res) => {
@@ -92,6 +115,19 @@ router.get('/logout', (req, res) => {
         }
         res.redirect('/auth/login');
     });
+});
+
+router.get('/captcha/:id', (req, res) => {
+    const text = activeCaptchas[req.params.id];
+    if (!text) return res.sendStatus(404);
+    
+    fetch('https://api.opencaptcha.io/captcha', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({text, difficulty: 3, width: 200, height: 50})}
+    ).then(
+        captchaRes => Readable.fromWeb(captchaRes.body).pipe(res)
+    );
 });
 
 module.exports = router;
