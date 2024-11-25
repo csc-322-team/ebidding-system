@@ -40,7 +40,7 @@ If insufficient funds, display error.
 U can quit to return to item view.
 U can submit form and add bid on item.
 
- [ ] Transaction: 
+ [X] Transaction: 
 Owner U can select a bid and accept it.
 All other bids are canceled.
 Funds are moved from users.
