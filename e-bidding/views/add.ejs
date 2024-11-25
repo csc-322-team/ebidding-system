@@ -1,26 +1,46 @@
 <form action="/items/add" method="POST" enctype="multipart/form-data">
-    <label for="name">Item Name:</label>
-    <input type="text" id="name" name="name" required>
+    <div>
+        <label for="name">Item Name:</label><br>
+        <input type="text" id="name" name="name" required>
+    </div>
+    <br>
 
-    <label for="description">Description:</label>
-    <textarea id="description" name="description"></textarea>
+    <div>
+        <label for="description">Description:</label><br>
+        <textarea id="description" name="description"></textarea>
+    </div>
+    <br>
 
-    <label for="starting_price">Starting Price:</label>
-    <input type="number" id="starting_price" name="starting_price" required>
+    <div>
+        <label for="starting_price">Starting Price:</label><br>
+        <input type="number" id="starting_price" name="starting_price" required>
+    </div>
+    <br>
 
-    <label for="type">Type:</label>
-    <select id="type" name="type" required>
-        <option value="sale">Sale</option>
-        <option value="rent">Rent</option>
-    </select>
+    <div>
+        <label for="type">Type:</label><br>
+        <select id="type" name="type" required>
+            <option value="sale">Sale</option>
+            <option value="rent">Rent</option>
+        </select>
+    </div>
+    <br>
 
-    <label for="image">Upload Image:</label>
-    <input type="file" id="image" name="image" accept="image/*">
+    <div>
+        <label for="image">Upload Image:</label><br>
+        <input type="file" id="image" name="image" accept="image/*">
+    </div>
+    <br>
 
-    <label for="deadline_date">Deadline Date:</label>
-    <input type="date" id="deadline_date" name="deadline_date" required>
+    <div>
+        <label for="deadline_date">Deadline Date:</label><br>
+        <input type="date" id="deadline_date" name="deadline_date" required>
+    </div>
+    <br>
 
-    <button type="submit">Add Item</button>
+    <div>
+        <button type="submit">Add Item</button>
+    </div>
 </form>
 
 <script>
