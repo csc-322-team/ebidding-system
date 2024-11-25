@@ -25,7 +25,11 @@ const upload = multer({ storage });
 router.get('/list', (req, res) => {
     db.all(`SELECT * FROM Items WHERE status = 'active' ORDER BY created_at DESC`, [], (err, rows) => {
         if (err) {
-            return res.status(500).json({ message: 'Error retrieving items.' });
+            return res.render('redirect', {
+                message: 'Database Error',
+                details: 'Unable to retrieve items at this time',
+                redirectUrl: '/'
+            });
         }
         res.render('items', { items: rows });
     });
@@ -36,7 +40,11 @@ router.get('/my-items', authenticate_token, (req, res) => {
 
     db.all(`SELECT * FROM Items WHERE owner_id = ?`, [userId], (err, rows) => {
         if (err) {
-            return res.status(500).json({ message: 'Error retrieving user items.' });
+            return res.render('redirect', {
+                message: 'Database Error',
+                details: 'Unable to retrieve your items',
+                redirectUrl: '/user/dashboard'
+            });
         }
         res.json(rows);
     });
@@ -44,15 +52,22 @@ router.get('/my-items', authenticate_token, (req, res) => {
 
 router.get('/add', (req, res) => {
     if (!req.session.user) {
-        return res.redirect('/auth/login');
+        return res.render('redirect', {
+            message: 'Authentication Required',
+            details: 'Please login to add items',
+            redirectUrl: '/auth/login'
+        });
     }
-
     res.render('add');
 });
 
 router.post('/add', upload.single('image'), (req, res) => {
     if (!req.session.user) {
-        return res.redirect('/auth/login');
+        return res.render('redirect', {
+            message: 'Authentication Required',
+            details: 'Please login to add items',
+            redirectUrl: '/auth/login'
+        });
     }
 
     const { name, description, starting_price, type, deadline_date } = req.body;
@@ -60,14 +75,22 @@ router.post('/add', upload.single('image'), (req, res) => {
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
     if (!name || !starting_price || !type || !deadline_date) {
-        return res.status(400).send('All required fields must be filled.');
+        return res.render('redirect', {
+            message: 'Invalid Input',
+            details: 'All required fields must be filled',
+            redirectUrl: '/items/add'
+        });
     }
 
     const selected_date = new Date(deadline_date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (selected_date < today) {
-        return res.status(400).send('Deadline cannot be set to a past date.');
+        return res.render('redirect', {
+            message: 'Invalid Date',
+            details: 'Deadline cannot be set to a past date',
+            redirectUrl: '/items/add'
+        });
     }
 
     const deadline_day = selected_date.toLocaleDateString('en-US');
@@ -75,41 +98,59 @@ router.post('/add', upload.single('image'), (req, res) => {
     const created_at = new Date().toISOString();
 
     db.run(
-        `INSERT INTO Items (owner_id, name, description, starting_price, current_price, image_url, type, deadline_date, created_at) 
+        `INSERT INTO Items (owner_id, name, description, starting_price, current_price, image_url, type, deadline_date, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [owner_id, name, description, starting_price, starting_price, imageUrl, type, deadline_day, created_at],
         function (err) {
             if (err) {
-                console.error('Database error:', err.message);
-                return res.status(500).send('Error adding item.');
+                return res.render('redirect', {
+                    message: 'Database Error',
+                    details: 'Unable to add item at this time',
+                    redirectUrl: '/items/add'
+                });
             }
-            res.redirect('/items/list');
+            res.render('redirect', {
+                message: 'Success',
+                details: 'Item has been added successfully',
+                redirectUrl: '/items/list'
+            });
         }
     );
 });
 
 router.get('/:id', (req, res) => {
     const itemId = req.params.id;
-    const error = req.query.error;
 
     db.get(`SELECT * FROM Items WHERE id = ?`, [itemId], (err, item) => {
         if (err || !item) {
-            return res.status(404).send('Item not found.');
+            return res.render('redirect', {
+                message: 'Item Not Found',
+                details: 'The requested item could not be found',
+                redirectUrl: '/items/list'
+            });
         }
 
         db.all(`SELECT * FROM Comments WHERE item_id = ?`, [itemId], (err, comments) => {
             if (err) {
-                return res.status(500).send('Error retrieving comments.');
+                return res.render('redirect', {
+                    message: 'Error Loading Comments',
+                    details: 'Unable to retrieve comments for this item',
+                    redirectUrl: '/items/list'
+                });
             }
 
             db.all(
-                `SELECT Bids.bid_amount, Users.username FROM Bids 
-                 JOIN Users ON Bids.bidder_id = Users.id 
+                `SELECT Bids.id, Bids.bid_amount, Users.username FROM Bids
+                 JOIN Users ON Bids.bidder_id = Users.id
                  WHERE Bids.item_id = ? ORDER BY Bids.bid_amount DESC`,
                 [itemId],
                 (err, bids) => {
                     if (err) {
-                        return res.status(500).send('Error retrieving bids.');
+                        return res.render('redirect', {
+                            message: 'Error Loading Bids',
+                            details: 'Unable to retrieve bids for this item',
+                            redirectUrl: '/items/list'
+                        });
                     }
 
                     res.render('item_details', {
@@ -117,7 +158,7 @@ router.get('/:id', (req, res) => {
                         comments,
                         bids,
                         user: req.session.user || null,
-                        error: error || null
+                        error: null
                     });
                 }
             );
@@ -127,7 +168,11 @@ router.get('/:id', (req, res) => {
 
 router.post('/:id/bid', (req, res) => {
     if (!req.session.user) {
-        return res.status(403).send('You must be logged in to place a bid.');
+        return res.render('redirect', {
+            message: 'Authentication Required',
+            details: 'You must be logged in to place a bid',
+            redirectUrl: '/auth/login'
+        });
     }
 
     const itemId = req.params.id;
@@ -140,17 +185,24 @@ router.post('/:id/bid', (req, res) => {
 
     db.get(`SELECT * FROM Items WHERE id = ? AND status = 'active'`, [itemId], (err, item) => {
         if (err || !item) {
-            return res.redirect(`/items/${itemId}?error=Item not found or inactive.`);
+            return res.render('redirect', {
+                message: 'Item Unavailable',
+                details: 'Item not found or no longer active',
+                redirectUrl: '/items/list'
+            });
         }
-        
-        // Check if below starting price
+
         if (parseFloat(bidAmount) < parseFloat(item.starting_price)) {
             return res.redirect(`/items/${itemId}?error=Bid amount must be at least the starting price.`);
         }
 
         db.get(`SELECT balance FROM Users WHERE id = ?`, [bidderId], (err, user) => {
             if (err) {
-                return res.redirect(`/items/${itemId}?error=Error retrieving balance.`);
+                return res.render('redirect', {
+                    message: 'System Error',
+                    details: 'Unable to verify account balance',
+                    redirectUrl: `/items/${itemId}`
+                });
             }
 
             if (user.balance < bidAmount) {
@@ -158,14 +210,22 @@ router.post('/:id/bid', (req, res) => {
             }
 
             db.run(
-                `INSERT INTO Bids (item_id, bidder_id, bid_amount, deadline) 
+                `INSERT INTO Bids (item_id, bidder_id, bid_amount, deadline)
                  VALUES (?, ?, ?, datetime('now', '+7 days'))`,
                 [itemId, bidderId, bidAmount],
                 function (err) {
                     if (err) {
-                        return res.status(500).send('Error placing bid.');
+                        return res.render('redirect', {
+                            message: 'Bid Failed',
+                            details: 'Unable to place bid at this time',
+                            redirectUrl: `/items/${itemId}`
+                        });
                     }
-                    res.redirect(`/items/${itemId}`);
+                    res.render('redirect', {
+                        message: 'Bid Placed',
+                        details: 'Your bid has been successfully recorded',
+                        redirectUrl: `/items/${itemId}`
+                    });
                 }
             );
         });
@@ -178,7 +238,11 @@ router.post('/:id/comment', (req, res) => {
     const author = req.session.user ? req.session.user.username : 'Guest';
 
     if (!content) {
-        return res.status(400).send('Comment cannot be empty.');
+        return res.render('redirect', {
+            message: 'Invalid Comment',
+            details: 'Comment cannot be empty',
+            redirectUrl: `/items/${itemId}`
+        });
     }
 
     db.run(
@@ -186,11 +250,123 @@ router.post('/:id/comment', (req, res) => {
         [itemId, author, content],
         function (err) {
             if (err) {
-                return res.status(500).send('Error adding comment.');
+                return res.render('redirect', {
+                    message: 'Comment Failed',
+                    details: 'Unable to add comment at this time',
+                    redirectUrl: `/items/${itemId}`
+                });
             }
             res.redirect(`/items/${itemId}`);
         }
     );
 });
+
+
+router.post('/:id/accept-bid', (req, res) => {
+    if (!req.session.user) {
+        return res.render('redirect', {
+            message: 'Authentication Required',
+            details: 'Please login to accept bids',
+            redirectUrl: '/auth/login'
+        });
+    }
+
+    const itemId = req.params.id;
+    const bidId = req.body.bid_id;
+    const sellerId = req.session.user.id;
+
+    // Verify seller owns the item
+    db.get('SELECT * FROM Items WHERE id = ?', [itemId], (err, item) => {
+        if (err || !item) {
+            return res.render('redirect', {
+                message: 'Item Not Found',
+                details: 'The requested item could not be found',
+                redirectUrl: '/user/dashboard'
+            });
+        }
+
+        if (item.owner_id !== sellerId) {
+            return res.render('redirect', {
+                message: 'Not Authorized',
+                details: 'You are not authorized to accept bids for this item',
+                redirectUrl: `/items/${itemId}`
+            });
+        }
+
+        if (item.status !== 'active') {
+            return res.render('redirect', {
+                message: 'Item Not Active',
+                details: 'This item is no longer active for bidding',
+                redirectUrl: `/items/${itemId}`
+            });
+        }
+
+        // Get bid details and verify buyer's balance
+        db.get('SELECT Bids.*, Users.balance FROM Bids JOIN Users ON Bids.bidder_id = Users.id WHERE Bids.id = ?',
+            [bidId], (err, bid) => {
+                if (err || !bid) {
+                    return res.render('redirect', {
+                        message: 'Bid Not Found',
+                        details: 'The selected bid could not be found',
+                        redirectUrl: `/items/${itemId}`
+                    });
+                }
+
+                if (bid.balance < bid.bid_amount) {
+                    return res.render('redirect', {
+                        message: 'Insufficient Funds',
+                        details: 'Buyer has insufficient funds to complete the transaction',
+                        redirectUrl: `/items/${itemId}`
+                    });
+                }
+
+                // Process the transaction
+                db.serialize(() => {
+                    db.run('BEGIN TRANSACTION');
+
+                    const updates = [
+                        ['UPDATE Items SET status = ? WHERE id = ?', ['closed', itemId]],
+                        ['UPDATE Users SET balance = balance - ? WHERE id = ?', [bid.bid_amount, bid.bidder_id]],
+                        ['UPDATE Users SET balance = balance + ? WHERE id = ?', [bid.bid_amount, sellerId]],
+                        ['INSERT INTO Transactions (item_id, buyer_id, seller_id, amount) VALUES (?, ?, ?, ?)',
+                            [itemId, bid.bidder_id, sellerId, bid.bid_amount]]
+                    ];
+
+                    let completed = 0;
+                    updates.forEach(([query, params]) => {
+                        db.run(query, params, (err) => {
+                            if (err) {
+                                db.run('ROLLBACK');
+                                return res.render('redirect', {
+                                    message: 'Transaction Failed',
+                                    details: 'Unable to complete the transaction',
+                                    redirectUrl: `/items/${itemId}`
+                                });
+                            }
+                            completed++;
+                            if (completed === updates.length) {
+                                db.run('COMMIT', (err) => {
+                                    if (err) {
+                                        db.run('ROLLBACK');
+                                        return res.render('redirect', {
+                                            message: 'Transaction Failed',
+                                            details: 'Failed to commit transaction',
+                                            redirectUrl: `/items/${itemId}`
+                                        });
+                                    }
+                                    res.render('redirect', {
+                                        message: 'Bid Accepted',
+                                        details: 'Transaction completed successfully',
+                                        redirectUrl: '/user/dashboard'
+                                    });
+                                });
+                            }
+                        });
+                    });
+                });
+            });
+    });
+});
+
 
 module.exports = router;
