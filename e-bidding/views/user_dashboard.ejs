@@ -14,14 +14,40 @@
     <ul>
         <% items.forEach(item => { %>
             <li>
-                <strong><%= item.name %></strong> - $<%= item.starting_price %>
-                <p>Description: <%= item.description %></p>
+                <strong><%= item.name %></strong>
+                - $<%= item.starting_price %>
+                <form action="/items/<%= item.id %>" method="GET" style="display: inline;">
+                    <button type="submit">View</button>
+                </form>
+                <br>Description: <%= item.description %>
             </li>
+            <br>
         <% }) %>
     </ul>
 <% } else { %>
     <p>You have not listed any items yet.</p>
 <% } %>
+
+
+<h3>Your Purchases</h3>
+<% if (purchases && purchases.length > 0) { %>
+    <ul>
+        <% purchases.forEach(purchase => { %>
+            <li>
+                <strong><%= purchase.item_name %></strong>
+                - $<%= purchase.amount %>
+                <form action="/items/<%= purchase.item_id %>" method="GET" style="display: inline;">
+                    <button type="submit">View</button>
+                </form> (Purchased: <%= new Date(purchase.date).toLocaleDateString() %>)
+                <br>Description: <%= purchase.description %>
+                
+            </li>
+        <% }) %>
+    </ul>
+<% } else { %>
+    <p>You haven't made any purchases yet.</p>
+<% } %>
+
 
 <h3>Your Balance: $<%= balance %></h3>
 <form id="depositForm" action="/user/deposit" method="POST">
@@ -37,18 +63,18 @@
 </form>
 
 <script>
-    function confirmDeposit() {
-        const amount = document.getElementById('deposit').value;
-        if (confirm(`Are you sure you want to deposit $${amount}?`)) {
-            document.getElementById('depositForm').submit();
-        }
+function confirmDeposit() {
+    const amount = document.getElementById('deposit').value;
+    if (confirm(`Are you sure you want to deposit $${amount}?`)) {
+        document.getElementById('depositForm').submit();
     }
-    
-    function confirmWithdraw() {
-        const amount = document.getElementById('withdraw').value;
-        if (confirm(`Are you sure you want to withdraw $${amount}?`)) {
-            document.getElementById('withdrawForm').submit();
-        }
+}
+
+function confirmWithdraw() {
+    const amount = document.getElementById('withdraw').value;
+    if (confirm(`Are you sure you want to withdraw $${amount}?`)) {
+        document.getElementById('withdrawForm').submit();
     }
-    </script>
+}
+</script>
     

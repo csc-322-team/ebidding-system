@@ -17,17 +17,30 @@ router.get('/dashboard', authenticated, (req, res) => {
             return res.status(500).send('Error retrieving items.');
         }
 
-        db.get(`SELECT balance FROM Users WHERE id = ?`, [userId], (err, user) => {
+        db.all(`
+            SELECT t.*, i.name as item_name, i.description
+            FROM Transactions t
+            JOIN Items i ON t.item_id = i.id
+            WHERE t.buyer_id = ?
+            ORDER BY t.date DESC`,
+            [userId], (err, purchases) => {
             if (err) {
-                return res.status(500).send('Error retrieving balance.');
+                return res.status(500).send('Error retrieving purchases.');
             }
 
-            res.render('user_dashboard', {
-                username: req.session.user.username,
-                items,
-                balance: user.balance,
-                error: req.query.error,
-                success: req.query.success
+            db.get(`SELECT balance FROM Users WHERE id = ?`, [userId], (err, user) => {
+                if (err) {
+                    return res.status(500).send('Error retrieving balance.');
+                }
+
+                res.render('user_dashboard', {
+                    username: req.session.user.username,
+                    items,
+                    purchases,
+                    balance: user.balance,
+                    error: req.query.error,
+                    success: req.query.success
+                });
             });
         });
     });
