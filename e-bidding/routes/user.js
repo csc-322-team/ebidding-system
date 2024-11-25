@@ -99,4 +99,79 @@ router.get('/item/:id', authenticated, (req, res) => {
     });
 });
 
+router.post('/:itemId/accept', (req, res) => {
+    const itemId = req.params.itemId;
+    const bidId = req.body.bidId;
+    const userId = req.session.user.id;
+
+    db.get('SELECT owner_id FROM Items WHERE id = ?', [itemId])
+        .then(item => {
+            if (!item) throw new Error('Item not found');
+            if (item.owner_id !== userId) throw new Error('You are not authorized to accept bids for this item');
+
+            return acceptBid(itemId, bidId);
+        })
+        .then(() => {
+            res.redirect(`/items/${itemId}`);
+        }) 
+        .catch(err => {
+            res.status(500).send('Error accepting bid: ' + err.message);
+        });
+});
+
+
+function acceptBid(itemId, bidId) {
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            db.run('BEGIN TRANSACTION');
+
+            let bidData, itemData, bidderBalance;
+
+            db.get('SELECT * FROM Bids WHERE id = ?', [bidId])
+                .then(bid => {
+                    if (!bid) throw new Error('Bid not found');
+                    bidData = bid;
+                    return db.get('SELECT * FROM Items WHERE id = ?', [itemId]);
+                })
+                .then(item => {
+                    if (!item) throw new Error('Item not found');
+                    itemData = item;
+                    return db.get('SELECT balance FROM Users WHERE id = ?', [bidData.bidder_id]);
+                })
+                .then(user => {
+                    if (!user) throw new Error('Bidder not found');
+                    bidderBalance = user.balance;
+                    if (bidderBalance < bidData.bid_amount) {
+                        throw new Error('Insufficient balance');
+                    }
+                    return db.run('UPDATE Items SET status = ?, current_price = ? WHERE id = ?', ['closed', bidData.bid_amount, itemId]);
+                })
+                .then(() => {
+                    return db.run('INSERT INTO Transactions (item_id, buyer_id, seller_id, amount) VALUES (?, ?, ?, ?)',
+                        [itemId, bidData.bidder_id, itemData.owner_id, bidData.bid_amount]);
+                })
+                .then(() => {
+                    return db.run('UPDATE Users SET balance = balance - ? WHERE id = ?', [bidData.bid_amount, bidData.bidder_id]);
+                })
+                .then(() => {
+                    return db.run('UPDATE Users SET balance = balance + ? WHERE id = ?', [bidData.bid_amount, itemData.owner_id]);
+                })
+                .then(() => {
+                    db.run('COMMIT', (err) => {
+                        if (err) {
+                            db.run('ROLLBACK');
+                            reject(err);
+                        } else {
+                            resolve();
+                        }
+                    });
+                })
+                .catch(err => {
+                    db.run('ROLLBACK');
+                    reject(err);
+                });
+        });
+    });
+}
+
 module.exports = router;
