@@ -103,7 +103,7 @@ router.get('/:id', (req, res) => {
             }
 
             db.all(
-                `SELECT Bids.id, Bids.bid_amount, Users.username FROM Bids 
+                `SELECT Bids.bid_amount, Users.username FROM Bids 
                  JOIN Users ON Bids.bidder_id = Users.id 
                  WHERE Bids.item_id = ? ORDER BY Bids.bid_amount DESC`,
                 [itemId],
@@ -172,7 +172,6 @@ router.post('/:id/bid', (req, res) => {
     });
 });
 
-
 router.post('/:id/comment', (req, res) => {
     const itemId = req.params.id;
     const { content } = req.body;
@@ -193,80 +192,5 @@ router.post('/:id/comment', (req, res) => {
         }
     );
 });
-
-
-router.post('/:id/accept-bid', (req, res) => {
-    console.log("Route hit: accept-bid", req.params.id, req.body.bid_id);
-    if (!req.session.user) {
-        return res.redirect('/auth/login');
-    }
-
-    const itemId = req.params.id;
-    const bidId = req.body.bid_id;
-    const sellerId = req.session.user.id;
-
-    // First verify seller owns the item
-    db.get('SELECT * FROM Items WHERE id = ?', [itemId], (err, item) => {
-        if (err || !item) {
-            return res.status(404).send('Item not found');
-        }
-        if (item.owner_id !== sellerId) {
-            return res.status(403).send('Not authorized');
-        }
-        if (item.status !== 'active') {
-            return res.status(400).send('Item is not active');
-        }
-
-        // Get bid details and check buyer's balance
-        db.get('SELECT Bids.*, Users.balance FROM Bids JOIN Users ON Bids.bidder_id = Users.id WHERE Bids.id = ?',
-            [bidId], (err, bid) => {
-            if (err || !bid) {
-                return res.status(404).send('Bid not found');
-            }
-            if (bid.balance < bid.bid_amount) {
-                return res.status(400).send('Buyer has insufficient funds');
-            }
-
-            // Process the transaction
-            db.serialize(() => {
-                db.run('BEGIN TRANSACTION');
-
-                const updates = [
-                    ['UPDATE Items SET status = ? WHERE id = ?', ['closed', itemId]],
-                    ['UPDATE Users SET balance = balance - ? WHERE id = ?', [bid.bid_amount, bid.bidder_id]],
-                    ['UPDATE Users SET balance = balance + ? WHERE id = ?', [bid.bid_amount, sellerId]],
-                    ['INSERT INTO Transactions (item_id, buyer_id, seller_id, amount) VALUES (?, ?, ?, ?)',
-                        [itemId, bid.bidder_id, sellerId, bid.bid_amount]]
-                ];
-
-                let completed = 0;
-                updates.forEach(([query, params]) => {
-                    db.run(query, params, (err) => {
-                        if (err) {
-                            db.run('ROLLBACK');
-                            return res.status(500).send('Transaction failed');
-                        }
-                        completed++;
-                        if (completed === updates.length) {
-                            db.run('COMMIT', (err) => {
-                                if (err) {
-                                    db.run('ROLLBACK');
-                                    return res.status(500).send('Failed to commit transaction');
-                                }
-                                res.render('success', {
-                                    message: 'Bid Accepted',
-                                    details: 'Transaction completed successfully',
-                                    redirectUrl: '/user/dashboard'
-                                });
-                            });
-                        }
-                    });
-                });
-            });
-        });
-    });
-});
-
-
 
 module.exports = router;
