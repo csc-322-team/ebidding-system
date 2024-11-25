@@ -6,6 +6,7 @@
                 <img src="<%= item.image_url %>" alt="<%= item.name %>" style="width: 100%; height: auto;">
             <% } %>
             <h3><%= item.name %></h3>
+            <p><strong>Type:</strong> <%= item.type %></p>
             <p><strong>Starting Price:</strong> $<%= item.starting_price %></p>
             <p><strong>Deadline:</strong> <%= item.deadline_date %></p>
             <a href="/items/<%= item.id %>">View Details</a>

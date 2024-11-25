@@ -11,12 +11,22 @@
 <ul>
     <% if (bids.length > 0) { %>
         <% bids.forEach(bid => { %>
-            <li><strong><%= bid.username %>:</strong> $<%= bid.bid_amount %></li>
+            <li>
+                <strong><%= bid.username %>:</strong> $<%= bid.bid_amount %>
+                <% if (user && user.id === item.owner_id && item.status === 'active') { %>
+                    <form method="POST" action="/items/<%= item.id %>/accept-bid">
+                        <input type="hidden" name="bid_id" value="<%= bid.id %>">
+                        <button type="submit">Accept Bid</button>
+                    </form>
+                <% } %>
+            </li>
         <% }) %>
+        
     <% } else { %>
         <p>No bids yet.</p>
     <% } %>
 </ul>
+
 
 <h3>Place a Bid</h3>
 <% if (user) { %>
