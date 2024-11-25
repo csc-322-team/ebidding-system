@@ -1,7 +1,7 @@
 <h2><%= item.name %></h2>
 <img src="<%= item.image_url %>" alt="<%= item.name %>" style="max-width: 300px; height: auto;">
 <p><strong>Description:</strong> <%= item.description %></p>
-<p><strong>Price:</strong> $<%= item.starting_price %></p>
+<p><strong>Starting Price:</strong> $<%= item.starting_price %></p>
 <p><strong>Type:</strong> <%= item.type %></p>
 <p><strong>Status:</strong> <%= item.status %></p>
 <p><strong>Created At:</strong> <%= item.created_at %></p>
@@ -20,6 +20,9 @@
 
 <h3>Place a Bid</h3>
 <% if (user) { %>
+    <% if (error) { %>
+        <p style="color: red;"><%= error %></p>
+    <% } %>
     <form action="/items/<%= item.id %>/bid" method="POST">
         <label for="bidAmount">Your Bid:</label>
         <input type="number" name="bidAmount" id="bidAmount" required>
@@ -28,6 +31,7 @@
 <% } else { %>
     <p>You must <a href="/auth/login">log in</a> to place a bid.</p>
 <% } %>
+
 
 <h3>Comments</h3>
 <ul>
