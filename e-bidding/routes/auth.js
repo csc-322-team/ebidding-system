@@ -50,7 +50,14 @@ router.post('/register', async (req, res) => {
                 const message = status === 'approved'
                     ? 'Superuser registered successfully.'
                     : 'Registration successful. Awaiting admin approval.';
-                res.status(201).json({ message });
+                const details = status === 'approved'
+                    ? 'Superuser registered successfully.'
+                    : 'Registration successful. Awaiting admin approval.';
+                res.render('success', {
+                    message: message,
+                    details: details,
+                    redirectUrl: '/'
+                    });
             }
         );
     });

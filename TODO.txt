@@ -6,40 +6,41 @@
 
 ---------------------------
 
- [ ] Browse:
+ [X] Browse:
 V is given a list of listed items to view.
 On any of these items, V can click and access individual item views with comment sections.
 The comments section has a form that V can leave a comment through.
 Submitting it will add the comment to the item’s comment section and will clear the form.
 V can also go back to listing view. 
 
- [ ] Become User:
+ [X] Become User:
 V can access an application form page to apply to become an U.
 They need to input a username, password, email, and a bot-filter question.
 Failing to fill any of these fields will result in an error message popping up. Any existing usernames or email overlaps will result in an error.
 Properly filling this form will send it and return V to the main page.
 S can reject or accept the application.
 
- [ ] Balance Adjustment:
+ [X] Balance Adjustment:
 There will be a balance page where U can view their account balance.
 U can fill out a form to withdraw or deposit money from their personal account. They must fill in their personal information and the amount.
 If any of these fields are invalid, then an error will pop up. If U is trying to withdraw an amount more than the balance, then an error will pop up.
 Otherwise, a confirmation window will appear. U can cancel to return to the form.
 Or accept and get a confirmation window, where after U will return to the page before.
 
- [ ] List for Buy and Sale:
+ [X] List for Buy and Sale:
 U can enter a listing page to list an item or service.
 They must fill out a form with the name of the thing to be sold, a description of it, a price, whether U wants to buy or sell it, and a deadline.
 If any of these fields are filled incorrectly when submitted, an error will pop up.
 If the form is filled correctly, then U will return to the previous page and the item will be added to the listing.
 
- [ ] Bid: 
+ [X] Bid: 
 U, in item view, can bid for that item by filling a form.
 If form has missing fields like deadline or funds, display error.
 If insufficient funds, display error.
 U can quit to return to item view.
 U can submit form and add bid on item.
-Transaction: 
+
+ [ ] Transaction: 
 Owner U can select a bid and accept it.
 All other bids are canceled.
 Funds are moved from users.

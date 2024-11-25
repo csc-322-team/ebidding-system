@@ -90,6 +90,7 @@ router.post('/add', upload.single('image'), (req, res) => {
 
 router.get('/:id', (req, res) => {
     const itemId = req.params.id;
+    const error = req.query.error;
 
     db.get(`SELECT * FROM Items WHERE id = ?`, [itemId], (err, item) => {
         if (err || !item) {
@@ -115,7 +116,8 @@ router.get('/:id', (req, res) => {
                         item,
                         comments,
                         bids,
-                        user: req.session.user || null
+                        user: req.session.user || null,
+                        error: error || null
                     });
                 }
             );
@@ -133,21 +135,26 @@ router.post('/:id/bid', (req, res) => {
     const { bidAmount } = req.body;
 
     if (!bidAmount || bidAmount <= 0) {
-        return res.status(400).send('Invalid bid amount.');
+        return res.redirect(`/items/${itemId}?error=Invalid bid amount.`);
     }
 
     db.get(`SELECT * FROM Items WHERE id = ? AND status = 'active'`, [itemId], (err, item) => {
         if (err || !item) {
-            return res.status(404).send('Item not found or inactive.');
+            return res.redirect(`/items/${itemId}?error=Item not found or inactive.`);
+        }
+        
+        // Check if below starting price
+        if (parseFloat(bidAmount) < parseFloat(item.starting_price)) {
+            return res.redirect(`/items/${itemId}?error=Bid amount must be at least the starting price.`);
         }
 
         db.get(`SELECT balance FROM Users WHERE id = ?`, [bidderId], (err, user) => {
             if (err) {
-                return res.status(500).send('Error retrieving balance.');
+                return res.redirect(`/items/${itemId}?error=Error retrieving balance.`);
             }
 
             if (user.balance < bidAmount) {
-                return res.status(400).send('Insufficient balance.');
+                return res.redirect(`/items/${itemId}?error=Insufficient balance.`);
             }
 
             db.run(

@@ -25,50 +25,54 @@ router.get('/dashboard', authenticated, (req, res) => {
             res.render('user_dashboard', {
                 username: req.session.user.username,
                 items,
-                balance: user.balance
+                balance: user.balance,
+                error: req.query.error,
+                success: req.query.success
             });
         });
     });
 });
+
 
 router.post('/deposit', authenticated, (req, res) => {
     const userId = req.session.user.id;
     const { amount } = req.body;
 
     if (!amount || amount <= 0) {
-        return res.status(400).send('Invalid deposit amount.');
+        return res.redirect('/user/dashboard?error=Invalid deposit amount');
     }
 
     db.run(`UPDATE Users SET balance = balance + ? WHERE id = ?`, [amount, userId], function (err) {
         if (err) {
-            return res.status(500).send('Error processing deposit.');
+            return res.redirect('/user/dashboard?error=Error processing deposit');
         }
-        res.redirect('/user/dashboard');
+        res.redirect('/user/dashboard?success=Deposit successful');
     });
 });
+
 
 router.post('/withdraw', authenticated, (req, res) => {
     const userId = req.session.user.id;
     const { amount } = req.body;
 
     if (!amount || amount <= 0) {
-        return res.status(400).send('Invalid withdrawal amount.');
+        return res.redirect('/user/dashboard?error=Invalid withdrawal amount');
     }
 
     db.get(`SELECT balance FROM Users WHERE id = ?`, [userId], (err, user) => {
         if (err) {
-            return res.status(500).send('Error retrieving balance.');
+            return res.redirect('/user/dashboard?error=Error retrieving balance');
         }
 
         if (user.balance < amount) {
-            return res.status(400).send('Insufficient balance.');
+            return res.redirect('/user/dashboard?error=Insufficient balance');
         }
 
         db.run(`UPDATE Users SET balance = balance - ? WHERE id = ?`, [amount, userId], function (err) {
             if (err) {
-                return res.status(500).send('Error processing withdrawal.');
+                return res.redirect('/user/dashboard?error=Error processing withdrawal');
             }
-            res.redirect('/user/dashboard');
+            res.redirect('/user/dashboard?success=Withdrawal successful');
         });
     });
 });
