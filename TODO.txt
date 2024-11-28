@@ -40,13 +40,13 @@ If insufficient funds, display error.
 U can quit to return to item view.
 U can submit form and add bid on item.
 
- [ ] Transaction: 
+ [X] Transaction: 
 Owner U can select a bid and accept it.
 All other bids are canceled.
 Funds are moved from users.
 Item is removed.
 
- [ ] Leaving Reviews: 
+ [X] Leaving Reviews: 
 After a transaction, the purchaser U can access a form in individual item view to leave a review.
 If a description or a rating is missing, display an error.
 If cancelled, return back to individual item view.
