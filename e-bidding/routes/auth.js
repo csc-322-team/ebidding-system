@@ -53,7 +53,7 @@ router.post('/register', async (req, res) => {
                 const details = status === 'approved'
                     ? 'Superuser registered successfully.'
                     : 'Registration successful. Awaiting admin approval.';
-                res.render('success', {
+                res.render('redirect', {
                     message: message,
                     details: details,
                     redirectUrl: '/'

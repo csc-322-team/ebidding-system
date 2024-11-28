@@ -48,6 +48,20 @@
     <p>You haven't made any purchases yet.</p>
 <% } %>
 
+<h3>Balance History (Last 10 transactions)</h3>
+<% if (balanceHistory && balanceHistory.length > 0) { %>
+    <ul>
+        <% balanceHistory.forEach(transaction => { %>
+            <li>
+                <%= transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1) %>:
+                $<%= transaction.amount %>
+                (<%= new Date(transaction.date).toLocaleString() %>)
+            </li>
+        <% }) %>
+    </ul>
+<% } else { %>
+    <p>No balance history available.</p>
+<% } %>
 
 <h3>Your Balance: $<%= balance %></h3>
 <form id="depositForm" action="/user/deposit" method="POST">
@@ -77,4 +91,4 @@ function confirmWithdraw() {
     }
 }
 </script>
-    
+

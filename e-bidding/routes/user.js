@@ -28,24 +28,35 @@ router.get('/dashboard', authenticated, (req, res) => {
                 return res.status(500).send('Error retrieving purchases.');
             }
 
-            db.get(`SELECT balance FROM Users WHERE id = ?`, [userId], (err, user) => {
+            db.all(`
+                SELECT * FROM BalanceHistory
+                WHERE user_id = ?
+                ORDER BY date DESC
+                LIMIT 10`,
+                [userId], (err, balanceHistory) => {
                 if (err) {
-                    return res.status(500).send('Error retrieving balance.');
+                    return res.status(500).send('Error retrieving balance history.');
                 }
 
-                res.render('user_dashboard', {
-                    username: req.session.user.username,
-                    items,
-                    purchases,
-                    balance: user.balance,
-                    error: req.query.error,
-                    success: req.query.success
+                db.get(`SELECT balance FROM Users WHERE id = ?`, [userId], (err, user) => {
+                    if (err) {
+                        return res.status(500).send('Error retrieving balance.');
+                    }
+
+                    res.render('user_dashboard', {
+                        username: req.session.user.username,
+                        items,
+                        purchases,
+                        balance: user.balance,
+                        balanceHistory,
+                        error: req.query.error,
+                        success: req.query.success
+                    });
                 });
             });
         });
     });
 });
-
 
 router.post('/deposit', authenticated, (req, res) => {
     const userId = req.session.user.id;
@@ -55,14 +66,22 @@ router.post('/deposit', authenticated, (req, res) => {
         return res.redirect('/user/dashboard?error=Invalid deposit amount');
     }
 
-    db.run(`UPDATE Users SET balance = balance + ? WHERE id = ?`, [amount, userId], function (err) {
-        if (err) {
-            return res.redirect('/user/dashboard?error=Error processing deposit');
-        }
-        res.redirect('/user/dashboard?success=Deposit successful');
+    db.serialize(() => {
+        db.run(`UPDATE Users SET balance = balance + ? WHERE id = ?`, [amount, userId], function (err) {
+            if (err) {
+                return res.redirect('/user/dashboard?error=Error processing deposit');
+            }
+
+            db.run(`INSERT INTO BalanceHistory (user_id, amount, type) VALUES (?, ?, 'deposit')`,
+                [userId, amount], function(err) {
+                if (err) {
+                    return res.redirect('/user/dashboard?error=Error recording transaction');
+                }
+                res.redirect('/user/dashboard?success=Deposit successful');
+            });
+        });
     });
 });
-
 
 router.post('/withdraw', authenticated, (req, res) => {
     const userId = req.session.user.id;
@@ -81,11 +100,20 @@ router.post('/withdraw', authenticated, (req, res) => {
             return res.redirect('/user/dashboard?error=Insufficient balance');
         }
 
-        db.run(`UPDATE Users SET balance = balance - ? WHERE id = ?`, [amount, userId], function (err) {
-            if (err) {
-                return res.redirect('/user/dashboard?error=Error processing withdrawal');
-            }
-            res.redirect('/user/dashboard?success=Withdrawal successful');
+        db.serialize(() => {
+            db.run(`UPDATE Users SET balance = balance - ? WHERE id = ?`, [amount, userId], function (err) {
+                if (err) {
+                    return res.redirect('/user/dashboard?error=Error processing withdrawal');
+                }
+
+                db.run(`INSERT INTO BalanceHistory (user_id, amount, type) VALUES (?, ?, 'withdraw')`,
+                    [userId, amount], function(err) {
+                    if (err) {
+                        return res.redirect('/user/dashboard?error=Error recording transaction');
+                    }
+                    res.redirect('/user/dashboard?success=Withdrawal successful');
+                });
+            });
         });
     });
 });
