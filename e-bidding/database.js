@@ -129,8 +129,23 @@ db.serialize(() => {
             date DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(user_id) REFERENCES Users(id)
         );
-    `);    
+    `);
 
+    db.run(`
+        CREATE TABLE IF NOT EXISTS Reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            transaction_id INTEGER NOT NULL,
+            reviewer_id INTEGER NOT NULL,
+            recipient_id INTEGER NOT NULL,
+            rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+            description TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(transaction_id) REFERENCES Transactions(id),
+            FOREIGN KEY(reviewer_id) REFERENCES Users(id),
+            FOREIGN KEY(recipient_id) REFERENCES Users(id)
+        );
+    `);
+    
 });
 
 module.exports = db;
