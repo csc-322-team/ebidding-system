@@ -76,10 +76,10 @@ U has more than $5000 in the account, conducted more than 5 transactions, and ha
 VIP receives 10% discount on each transaction, reducing the total amount they pay for purchases or rentals by 10%. 
 VIPs -instead of getting immediately suspended for complaints or low ratings- will instead get demoted.
 
- [ ] VIP demolition: 
+ [ ] VIP demotion: 
 If VIP user either has less than $5000 in account, receives a complaint, or is suspended, they are moved back to U status. S checks for any of these before reverting their status to U. 
 
- [ ] Record Access: 
+ [X] Record Access: 
 U can view personal records including: 
 Balance
 deposit/wihdrawal history

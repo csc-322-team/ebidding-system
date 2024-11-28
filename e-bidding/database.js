@@ -120,6 +120,17 @@ db.serialize(() => {
         }
     });
 
+    db.run(`
+        CREATE TABLE IF NOT EXISTS BalanceHistory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            amount REAL NOT NULL,
+            type TEXT CHECK(type IN ('deposit', 'withdraw')) NOT NULL,
+            date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES Users(id)
+        );
+    `);    
+
 });
 
 module.exports = db;
