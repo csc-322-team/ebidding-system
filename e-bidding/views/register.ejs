@@ -1,18 +1,25 @@
 <h2>Register</h2>
 <form action="/auth/register" method="POST">
+    <label for="email">Email:</label>
+    <input type="email" id="email" name="email" required value="<%= fields.email %>"><br>
+
     <label for="username">Username:</label>
-    <input type="text" id="username" name="username" required><br>
+    <input type="text" id="username" name="username" required value="<%= fields.username %>"><br>
 
     <label for="password">Password:</label>
-    <input type="password" id="password" name="password" required><br>
+    <input type="password" id="password" name="password" required value="<%= fields.password %>"><br>
 
     <label for="confirm">Confirm password:</label>
     <input type="password" id="confirm" name="confirm" required><br>
     
     <img src="captcha/<%= captchaId %>" style="display: block;">
     <label for="captcha">Enter the code above:</label>
-    <input type="text" id="captcha" name="captcha" required><br>
+    <input type="text" id="captcha" name="captcha" required value="<%= fields.captcha %>"><br>
     <input type="hidden" id="captchaId" name="captchaId" value="<%= captchaId %>">
 
     <button type="submit">Register</button>
+    
+    <% if (typeof error !== 'undefined') { %>
+        <p style="color: red">Error: <%= error %></p>    
+    <% } %>
 </form>

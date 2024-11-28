@@ -13,13 +13,15 @@ db.serialize(() => {
     db.run(`
         CREATE TABLE IF NOT EXISTS Users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL UNIQUE,
             username TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL,
             role TEXT CHECK(role IN ('V', 'U', 'S')) DEFAULT 'V',
             balance REAL DEFAULT 0.0,
             rating REAL DEFAULT 0.0,
             suspension_count INTEGER DEFAULT 0,
-            is_vip INTEGER DEFAULT 0
+            is_vip INTEGER DEFAULT 0,
+            status TEXT CHECK(status IN ('pending', 'approved', 'rejected', 'suspended')) DEFAULT 'pending'
         );
     `);
 

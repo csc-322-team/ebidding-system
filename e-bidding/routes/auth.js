@@ -9,55 +9,54 @@ const CAPTCHA_EXPIRE = 5 * 60 * 1000;
 
 router.post('/register', async (req, res) => {
     const fields = req.body;
+    const captchaAns = activeCaptchas[fields.captchaId];
+    const error = (msg, code = 400) => res.status(code).render('register', {
+        error: msg,
+        captchaId: captchaAns ? fields.captchaId : generateCaptcha(),
+        fields
+    });
     
-    const requiredFields = ['username', 'password', 'captchaId', 'captcha'];
+    const requiredFields = ['email', 'username', 'password', 'captchaId', 'captcha'];
     for (const fieldName of requiredFields) {
-        if (!fields[fieldName]) return res.status(400).json({ message: 'Username, password, and captcha answer are required.' });
+        if (!fields[fieldName]) return error('At least one field is missing.');
     }
     
     if (fields.password !== fields.confirm) {
-        return res.status(400).json({ message: 'Input password does not match confirmed password.' });
+        return error('Input password does not match confirmed password.');
     }
 
     if (fields.role && fields.role !== 'V' && fields.role !== 'S') {
-        return res.status(400).json({ message: 'Invalid role.' });
+        return error('Invalid role.');
     }
     
-    const captchaAns = activeCaptchas[fields.captchaId];
     if (!captchaAns) {
-        return res.status(400).json({ message: 'Captcha expired from inactivity.' });
+        return error('Captcha expired from inactivity.');
     }
     if (captchaAns !== fields.captcha.toUpperCase()) {
-        return res.status(400).json({ message: 'Captcha answer is incorrect.' });
+        return error('Captcha answer is incorrect.');
     }
 
-    db.get('SELECT * FROM Users WHERE username = ?', [fields.username], async (err, user) => {
-        if (err) return res.status(500).json({ message: 'Database error.' });
-        if (user) return res.status(400).json({ message: 'Username already exists.' });
+    db.get('SELECT * FROM Users WHERE username = ? OR email = ?', [fields.username, fields.email], async (err, user) => {
+        if (err) return error('Something went wrong while trying to verify your email and username are unique.', 500);
+        if (user) return error('Email or username already exists.');
 
         const hashedPassword = await bcrypt.hash(fields.password, 10);
 
         const status = fields.role === 'S' ? 'approved' : 'pending';
 
         db.run(
-            `INSERT INTO Users (username, password, role, status) VALUES (?, ?, ?, ?)`,
-            [fields.username, hashedPassword, fields.role || 'V', status],
+            `INSERT INTO Users (email, username, password, role, status) VALUES (?, ?, ?, ?, ?)`,
+            [fields.email, fields.username, hashedPassword, fields.role || 'V', status],
             function (err) {
                 if (err) {
-                    return res.status(500).json({ message: 'Error registering user.' });
+                    return error('Something went wrong while trying to register you.');
                 }
 
-                const message = status === 'approved'
-                    ? 'Superuser registered successfully.'
-                    : 'Registration successful. Awaiting admin approval.';
-                const details = status === 'approved'
-                    ? 'Superuser registered successfully.'
-                    : 'Registration successful. Awaiting admin approval.';
-                res.render('success', {
-                    message: message,
-                    details: details,
+                res.render('redirect', {
+                    message: status === 'approved' ? 'Superuser registered successfully.' : 'Registration successful.',
+                    details: status === 'approved' ? 'You may login with your new credentials.' : 'You may login after an admin approves your registration.',
                     redirectUrl: '/'
-                    });
+                });
             }
         );
     });
@@ -65,31 +64,25 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', (req, res) => {
     const { username, password } = req.body;
+    const error = (msg, code = 400) => res.status(code).render('login', { error: msg });
+
 
     if (!username || !password) {
-        return res.status(400).json({ message: 'Username and password are required.' });
+        return error('Username and password are required.');
     }
 
     db.get('SELECT * FROM Users WHERE username = ?', [username], async (err, user) => {
-        if (err) return res.status(500).json({ message: 'Database error.' });
-        if (!user) return res.status(400).json({ message: 'Invalid username or password.' });
+        if (err) return error('Something went wrong while trying to find your account.', 500);
+        if (!user) return error('Invalid username or password.');
 
-        if (user.status === 'pending') {
-            return res.status(403).json({ message: 'Account is pending approval.' });
-        }
-
-        if (user.status === 'rejected') {
-            return res.status(403).json({ message: 'Account has been rejected.' });
-        }
-
-        if (user.status === 'suspended') {
-            return res.status(403).json({ message: 'Account has been suspended.' });
+        switch (user.status) {
+            case 'pending': return error('Account is pending approval.');
+            case 'rejected': return error('Account has been rejected.');
+            case 'suspended': return error('Account has been suspended.');
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid username or password.' });
-        }
+        if (!isMatch) return error('Invalid username or password.');
 
         req.session.user = { id: user.id, username: user.username, role: user.role };
 
@@ -102,13 +95,7 @@ router.post('/login', (req, res) => {
 });
 
 router.get('/register', (req, res) => {
-    // Generate a captcha and store it temporarily
-    const captchaId = Math.random().toString().slice(2);
-    const captchaText = Math.floor(Math.random() * 36 ** 6).toString(36).toUpperCase().padStart(6, '0');
-    activeCaptchas[captchaId] = captchaText;
-    setTimeout(() => delete activeCaptchas[captchaId], CAPTCHA_EXPIRE);
-
-    res.render('register', {captchaId});
+    res.render('register', {fields: {}, captchaId: generateCaptcha()});
 });
 
 router.get('/login', (req, res) => {
@@ -138,3 +125,12 @@ router.get('/captcha/:id', (req, res) => {
 });
 
 module.exports = router;
+
+
+function generateCaptcha() {
+    const captchaId = Math.random().toString().slice(2);
+    const captchaText = Math.floor(Math.random() * 36 ** 6).toString(36).toUpperCase().padStart(6, '0');
+    activeCaptchas[captchaId] = captchaText;
+    setTimeout(() => delete activeCaptchas[captchaId], CAPTCHA_EXPIRE);
+    return captchaId;
+}
