@@ -17,44 +17,93 @@ router.get('/dashboard', authenticated, (req, res) => {
             return res.status(500).send('Error retrieving items.');
         }
 
-        db.all(`
-            SELECT t.*, i.name as item_name, i.description
-            FROM Transactions t
-            JOIN Items i ON t.item_id = i.id
-            WHERE t.buyer_id = ?
-            ORDER BY t.date DESC`,
-            [userId], (err, purchases) => {
-            if (err) {
-                return res.status(500).send('Error retrieving purchases.');
-            }
-
-            db.all(`
-                SELECT * FROM BalanceHistory
-                WHERE user_id = ?
-                ORDER BY date DESC
-                LIMIT 10`,
-                [userId], (err, balanceHistory) => {
+        db.all(
+            `SELECT t.*, i.name as item_name, i.description
+             FROM Transactions t
+             JOIN Items i ON t.item_id = i.id
+             WHERE t.buyer_id = ?
+             ORDER BY t.date DESC`,
+            [userId],
+            (err, purchases) => {
                 if (err) {
-                    return res.status(500).send('Error retrieving balance history.');
+                    return res.status(500).send('Error retrieving purchases.');
                 }
 
-                db.get(`SELECT balance FROM Users WHERE id = ?`, [userId], (err, user) => {
-                    if (err) {
-                        return res.status(500).send('Error retrieving balance.');
-                    }
+                db.all(
+                    `SELECT * FROM BalanceHistory
+                     WHERE user_id = ?
+                     ORDER BY date DESC
+                     LIMIT 10`,
+                    [userId],
+                    (err, balanceHistory) => {
+                        if (err) {
+                            return res.status(500).send('Error retrieving balance history.');
+                        }
 
-                    res.render('user_dashboard', {
-                        username: req.session.user.username,
-                        items,
-                        purchases,
-                        balance: user.balance,
-                        balanceHistory,
-                        error: req.query.error,
-                        success: req.query.success
-                    });
-                });
-            });
-        });
+                        db.get(
+                            `SELECT AVG(rating) as avg_rating FROM Reviews WHERE recipient_id = ?`,
+                            [userId],
+                            (err, ratingResult) => {
+                                if (err) {
+                                    return res.status(500).send('Error retrieving overall rating.');
+                                }
+
+                                const overallRating = ratingResult?.avg_rating || 0;
+
+                                db.all(
+                                    `SELECT r.*, u.username AS from_user
+                                     FROM Reviews r
+                                     JOIN Users u ON r.reviewer_id = u.id
+                                     WHERE r.recipient_id = ?`,
+                                    [userId],
+                                    (err, receivedRatings) => {
+                                        if (err) {
+                                            return res.status(500).send('Error retrieving received ratings.');
+                                        }
+
+                                        db.all(
+                                            `SELECT r.*, u.username AS to_user
+                                             FROM Reviews r
+                                             JOIN Users u ON r.recipient_id = u.id
+                                             WHERE r.reviewer_id = ?`,
+                                            [userId],
+                                            (err, givenRatings) => {
+                                                if (err) {
+                                                    return res.status(500).send('Error retrieving given ratings.');
+                                                }
+
+                                                db.get(
+                                                    `SELECT balance FROM Users WHERE id = ?`,
+                                                    [userId],
+                                                    (err, user) => {
+                                                        if (err) {
+                                                            return res.status(500).send('Error retrieving balance.');
+                                                        }
+
+                                                        res.render('user_dashboard', {
+                                                            username: req.session.user.username,
+                                                            items,
+                                                            purchases,
+                                                            balance: user.balance,
+                                                            balanceHistory,
+                                                            receivedRatings,
+                                                            givenRatings,
+                                                            rating: overallRating,
+                                                            error: req.query.error,
+                                                            success: req.query.success
+                                                        });
+                                                    }
+                                                );
+                                            }
+                                        );
+                                    }
+                                );
+                            }
+                        );
+                    }
+                );
+            }
+        );
     });
 });
 
@@ -160,7 +209,6 @@ router.post('/:itemId/accept', (req, res) => {
         });
 });
 
-
 function acceptBid(itemId, bidId) {
     return new Promise((resolve, reject) => {
         db.serialize(() => {
@@ -168,49 +216,71 @@ function acceptBid(itemId, bidId) {
 
             let bidData, itemData, bidderBalance;
 
-            db.get('SELECT * FROM Bids WHERE id = ?', [bidId])
-                .then(bid => {
-                    if (!bid) throw new Error('Bid not found');
-                    bidData = bid;
-                    return db.get('SELECT * FROM Items WHERE id = ?', [itemId]);
-                })
-                .then(item => {
-                    if (!item) throw new Error('Item not found');
-                    itemData = item;
-                    return db.get('SELECT balance FROM Users WHERE id = ?', [bidData.bidder_id]);
-                })
-                .then(user => {
-                    if (!user) throw new Error('Bidder not found');
-                    bidderBalance = user.balance;
-                    if (bidderBalance < bidData.bid_amount) {
-                        throw new Error('Insufficient balance');
-                    }
-                    return db.run('UPDATE Items SET status = ?, current_price = ? WHERE id = ?', ['closed', bidData.bid_amount, itemId]);
-                })
-                .then(() => {
-                    return db.run('INSERT INTO Transactions (item_id, buyer_id, seller_id, amount) VALUES (?, ?, ?, ?)',
-                        [itemId, bidData.bidder_id, itemData.owner_id, bidData.bid_amount]);
-                })
-                .then(() => {
-                    return db.run('UPDATE Users SET balance = balance - ? WHERE id = ?', [bidData.bid_amount, bidData.bidder_id]);
-                })
-                .then(() => {
-                    return db.run('UPDATE Users SET balance = balance + ? WHERE id = ?', [bidData.bid_amount, itemData.owner_id]);
-                })
-                .then(() => {
-                    db.run('COMMIT', (err) => {
-                        if (err) {
-                            db.run('ROLLBACK');
-                            reject(err);
-                        } else {
-                            resolve();
-                        }
-                    });
-                })
-                .catch(err => {
+            db.get('SELECT * FROM Bids WHERE id = ?', [bidId], (err, bid) => {
+                if (err || !bid) {
                     db.run('ROLLBACK');
-                    reject(err);
+                    return reject(new Error('Bid not found'));
+                }
+                bidData = bid;
+
+                db.get('SELECT * FROM Items WHERE id = ?', [itemId], (err, item) => {
+                    if (err || !item) {
+                        db.run('ROLLBACK');
+                        return reject(new Error('Item not found'));
+                    }
+                    itemData = item;
+
+                    db.get('SELECT balance FROM Users WHERE id = ?', [bidData.bidder_id], (err, user) => {
+                        if (err || !user) {
+                            db.run('ROLLBACK');
+                            return reject(new Error('Bidder not found'));
+                        }
+                        bidderBalance = user.balance;
+
+                        if (bidderBalance < bidData.bid_amount) {
+                            db.run('ROLLBACK');
+                            return reject(new Error('Insufficient balance'));
+                        }
+
+                        db.run('UPDATE Items SET status = ?, current_price = ? WHERE id = ?', ['closed', bidData.bid_amount, itemId], (err) => {
+                            if (err) {
+                                db.run('ROLLBACK');
+                                return reject(new Error('Error updating item status'));
+                            }
+
+                            db.run('INSERT INTO Transactions (item_id, buyer_id, seller_id, amount) VALUES (?, ?, ?, ?)',
+                                [itemId, bidData.bidder_id, itemData.owner_id, bidData.bid_amount], (err) => {
+                                if (err) {
+                                    db.run('ROLLBACK');
+                                    return reject(new Error('Error creating transaction'));
+                                }
+
+                                db.run('UPDATE Users SET balance = balance - ? WHERE id = ?', [bidData.bid_amount, bidData.bidder_id], (err) => {
+                                    if (err) {
+                                        db.run('ROLLBACK');
+                                        return reject(new Error('Error deducting bidder balance'));
+                                    }
+
+                                    db.run('UPDATE Users SET balance = balance + ? WHERE id = ?', [bidData.bid_amount, itemData.owner_id], (err) => {
+                                        if (err) {
+                                            db.run('ROLLBACK');
+                                            return reject(new Error('Error crediting seller balance'));
+                                        }
+
+                                        db.run('COMMIT', (err) => {
+                                            if (err) {
+                                                db.run('ROLLBACK');
+                                                return reject(new Error('Error committing transaction'));
+                                            }
+                                            resolve();
+                                        });
+                                    });
+                                });
+                            });
+                        });
+                    });
                 });
+            });
         });
     });
 }

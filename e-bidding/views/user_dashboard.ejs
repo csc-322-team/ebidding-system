@@ -1,4 +1,6 @@
-<h2>Welcome, <%= username %>!</h2>
+<h3>Your Profile</h3>
+<p><strong>Username:</strong> <%= username %></p>
+<p><strong>Overall Rating:</strong> <%= rating ? `${rating}/5` : 'No ratings yet' %></p>
 
 <% if (error) { %>
     <div class="error"><%= error %></div>

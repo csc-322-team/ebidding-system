@@ -71,13 +71,15 @@ db.serialize(() => {
     db.run(`
         CREATE TABLE IF NOT EXISTS Ratings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            from_user_id INTEGER,
-            to_user_id INTEGER,
+            transaction_id INTEGER NOT NULL,
+            from_user_id INTEGER NOT NULL,
+            to_user_id INTEGER NOT NULL,
             score INTEGER CHECK(score BETWEEN 1 AND 5),
-            transaction_id INTEGER,
+            comment TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(transaction_id) REFERENCES Transactions(id),
             FOREIGN KEY(from_user_id) REFERENCES Users(id),
-            FOREIGN KEY(to_user_id) REFERENCES Users(id),
-            FOREIGN KEY(transaction_id) REFERENCES Transactions(id)
+            FOREIGN KEY(to_user_id) REFERENCES Users(id)
         );
     `);
 
@@ -105,24 +107,6 @@ db.serialize(() => {
     `);
 
     db.run(`
-        ALTER TABLE Items 
-        ADD COLUMN starting_price REAL NOT NULL DEFAULT 0
-    `, (err) => {
-        if (err && !err.message.includes("duplicate column")) {
-            console.error("Error adding starting_price column:", err.message);
-        }
-    });
-    
-    db.run(`
-        ALTER TABLE Items 
-        ADD COLUMN current_price REAL NOT NULL DEFAULT 0
-    `, (err) => {
-        if (err && !err.message.includes("duplicate column")) {
-            console.error("Error adding current_price column:", err.message);
-        }
-    });
-
-    db.run(`
         CREATE TABLE IF NOT EXISTS BalanceHistory (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -133,20 +117,22 @@ db.serialize(() => {
         );
     `);
 
+
     db.run(`
         CREATE TABLE IF NOT EXISTS Reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             transaction_id INTEGER NOT NULL,
             reviewer_id INTEGER NOT NULL,
             recipient_id INTEGER NOT NULL,
-            rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
-            description TEXT NOT NULL,
+            rating INTEGER CHECK(rating BETWEEN 1 AND 5),
+            description TEXT,a
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(transaction_id, reviewer_id),
             FOREIGN KEY(transaction_id) REFERENCES Transactions(id),
             FOREIGN KEY(reviewer_id) REFERENCES Users(id),
             FOREIGN KEY(recipient_id) REFERENCES Users(id)
         );
-    `);
+    `);    
     
 });
 

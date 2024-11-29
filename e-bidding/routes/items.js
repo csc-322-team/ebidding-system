@@ -131,23 +131,21 @@ router.get('/:id', (req, res) => {
             });
         }
 
-        // Check if current user is the purchaser
         db.get(
-            `SELECT * FROM Transactions WHERE item_id = ? AND buyer_id = ?`,
-            [itemId, currentUserId],
+            `SELECT * FROM Transactions WHERE item_id = ? AND (buyer_id = ? OR seller_id = ?)`,
+            [itemId, currentUserId, currentUserId],
             (err, transaction) => {
-                const isPurchaser = transaction ? true : false;
+                const isPurchaser = transaction && transaction.buyer_id === currentUserId;
+                const isSeller = transaction && transaction.seller_id === currentUserId;
 
-                // Get review if it exists
+                // Get existing review (if any)
                 db.get(
                     `SELECT Reviews.*, Users.username as reviewer_name
                      FROM Reviews
                      JOIN Users ON Reviews.reviewer_id = Users.id
-                     WHERE Reviews.transaction_id IN
-                        (SELECT id FROM Transactions WHERE item_id = ?)`,
-                    [itemId],
+                     WHERE Reviews.transaction_id = ? AND Reviews.reviewer_id = ?`,
+                    [transaction?.id, currentUserId],
                     (err, review) => {
-
                         // Get comments
                         db.all(`SELECT * FROM Comments WHERE item_id = ?`, [itemId], (err, comments) => {
                             if (err) {
@@ -181,7 +179,8 @@ router.get('/:id', (req, res) => {
                                         bids,
                                         user: req.session.user || null,
                                         error: null,
-                                        isPurchaser: isPurchaser,
+                                        isPurchaser,
+                                        isSeller,
                                         review: review || null
                                     });
                                 }
@@ -303,7 +302,6 @@ router.post('/:id/accept-bid', (req, res) => {
     const bidId = req.body.bid_id;
     const sellerId = req.session.user.id;
 
-    // Verify seller owns the item
     db.get('SELECT * FROM Items WHERE id = ?', [itemId], (err, item) => {
         if (err || !item) {
             return res.render('redirect', {
@@ -329,7 +327,6 @@ router.post('/:id/accept-bid', (req, res) => {
             });
         }
 
-        // Get bid details and verify buyer's balance
         db.get('SELECT Bids.*, Users.balance FROM Bids JOIN Users ON Bids.bidder_id = Users.id WHERE Bids.id = ?',
             [bidId], (err, bid) => {
                 if (err || !bid) {
@@ -348,7 +345,6 @@ router.post('/:id/accept-bid', (req, res) => {
                     });
                 }
 
-                // Process the transaction
                 db.serialize(() => {
                     db.run('BEGIN TRANSACTION');
 
@@ -409,39 +405,44 @@ router.post('/:id/review', (req, res) => {
     const reviewerId = req.session.user.id;
     const { rating, description } = req.body;
 
-    // Validate inputs
-    if (!rating || !description) {
-        return res.redirect(`/items/${itemId}?error=Both rating and description are required`);
+    if (!rating || rating < 1 || rating > 5 || !description) {
+        return res.redirect(`/items/${itemId}?error=Rating and description are required, and rating must be between 1 and 5.`);
     }
 
-    if (rating < 1 || rating > 5) {
-        return res.redirect(`/items/${itemId}?error=Rating must be between 1 and 5`);
-    }
-
-    // Verify transaction exists and user is the buyer
     db.get(
         `SELECT t.*, i.owner_id
          FROM Transactions t
          JOIN Items i ON t.item_id = i.id
-         WHERE t.item_id = ? AND t.buyer_id = ?`,
-        [itemId, reviewerId],
+         WHERE t.item_id = ? AND (t.buyer_id = ? OR i.owner_id = ?)`,
+        [itemId, reviewerId, reviewerId],
         (err, transaction) => {
             if (err || !transaction) {
                 return res.render('redirect', {
                     message: 'Not Authorized',
-                    details: 'You can only review items you have purchased',
+                    details: 'You can only review items you have participated in',
                     redirectUrl: `/items/${itemId}`
                 });
             }
 
-            // Check for existing review
+            const recipientId =
+                transaction.buyer_id === reviewerId
+                    ? transaction.owner_id 
+                    : transaction.buyer_id; 
+
             db.get(
-                `SELECT id FROM Reviews
+                `SELECT id FROM Reviews 
                  WHERE transaction_id = ? AND reviewer_id = ?`,
                 [transaction.id, reviewerId],
                 (err, existingReview) => {
+                    if (err) {
+                        return res.render('redirect', {
+                            message: 'System Error',
+                            details: 'Unable to verify existing reviews',
+                            redirectUrl: `/items/${itemId}`
+                        });
+                    }
+
                     if (existingReview) {
-                        // Update existing review
                         db.run(
                             `UPDATE Reviews
                              SET rating = ?, description = ?
@@ -451,34 +452,33 @@ router.post('/:id/review', (req, res) => {
                                 if (err) {
                                     return res.render('redirect', {
                                         message: 'Review Update Failed',
-                                        details: 'Unable to update review at this time',
+                                        details: 'Unable to update your review at this time',
                                         redirectUrl: `/items/${itemId}`
                                     });
                                 }
                                 res.render('redirect', {
                                     message: 'Review Updated',
-                                    details: 'Your review has been updated',
+                                    details: 'Your review has been updated successfully',
                                     redirectUrl: `/items/${itemId}`
                                 });
                             }
                         );
                     } else {
-                        // Insert new review
                         db.run(
                             `INSERT INTO Reviews (transaction_id, reviewer_id, recipient_id, rating, description)
                              VALUES (?, ?, ?, ?, ?)`,
-                            [transaction.id, reviewerId, transaction.owner_id, rating, description],
-                            function(err) {
+                            [transaction.id, reviewerId, recipientId, rating, description],
+                            (err) => {
                                 if (err) {
                                     return res.render('redirect', {
                                         message: 'Review Failed',
-                                        details: 'Unable to submit review at this time',
+                                        details: 'Unable to submit your review at this time',
                                         redirectUrl: `/items/${itemId}`
                                     });
                                 }
                                 res.render('redirect', {
                                     message: 'Review Submitted',
-                                    details: 'Your review has been recorded',
+                                    details: 'Your review has been submitted successfully',
                                     redirectUrl: `/items/${itemId}`
                                 });
                             }
