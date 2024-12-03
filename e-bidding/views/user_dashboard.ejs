@@ -1,6 +1,7 @@
-<h3>Your Profile</h3>
-<p><strong>Username:</strong> <%= username %></p>
+<h2>Welcome, <%= username %></h2>
 <p><strong>Overall Rating:</strong> <%= rating ? `${rating}/5` : 'No ratings yet' %></p>
+<p><strong>Account Status:</strong> <%= is_vip ? 'VIP' : 'Regular User' %></p>
+<p><strong>Balance:</strong> $<%= balance %></p>
 
 <% if (error) { %>
     <div class="error"><%= error %></div>
@@ -10,6 +11,13 @@
     <div class="success"><%= success %></div>
 <% } %>
 
+<% if (quitRequestPending) { %>
+    <p>Your request to quit the system has already been submitted and is awaiting approval.</p>
+<% } else { %>
+    <form action="/user/apply-quit" method="POST">
+        <button type="submit">Apply to Quit</button>
+    </form>
+<% } %>
 
 <h3>Your Items</h3>
 <% if (items.length > 0) { %>
@@ -93,4 +101,3 @@ function confirmWithdraw() {
     }
 }
 </script>
-

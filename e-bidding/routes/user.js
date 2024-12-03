@@ -73,25 +73,38 @@ router.get('/dashboard', authenticated, (req, res) => {
                                                 }
 
                                                 db.get(
-                                                    `SELECT balance FROM Users WHERE id = ?`,
+                                                    `SELECT balance, is_vip FROM Users WHERE id = ?`,
                                                     [userId],
                                                     (err, user) => {
                                                         if (err) {
-                                                            return res.status(500).send('Error retrieving balance.');
+                                                            return res.status(500).send('Error retrieving user details.');
                                                         }
-
-                                                        res.render('user_dashboard', {
-                                                            username: req.session.user.username,
-                                                            items,
-                                                            purchases,
-                                                            balance: user.balance,
-                                                            balanceHistory,
-                                                            receivedRatings,
-                                                            givenRatings,
-                                                            rating: overallRating,
-                                                            error: req.query.error,
-                                                            success: req.query.success
-                                                        });
+                                                
+                                                        // Check if the user has a pending quit request
+                                                        db.get(
+                                                            `SELECT * FROM QuitRequests WHERE user_id = ? AND status = 'pending'`,
+                                                            [userId],
+                                                            (err, quitRequest) => {
+                                                                if (err) {
+                                                                    return res.status(500).send('Error retrieving quit request status.');
+                                                                }
+                                                
+                                                                res.render('user_dashboard', {
+                                                                    username: req.session.user.username,
+                                                                    is_vip: user.is_vip, // Include this in the template data
+                                                                    items,
+                                                                    purchases,
+                                                                    balance: user.balance,
+                                                                    balanceHistory,
+                                                                    receivedRatings,
+                                                                    givenRatings,
+                                                                    rating: overallRating,
+                                                                    quitRequestPending: !!quitRequest,
+                                                                    error: req.query.error,
+                                                                    success: req.query.success
+                                                                });
+                                                            }
+                                                        );
                                                     }
                                                 );
                                             }
@@ -284,5 +297,36 @@ function acceptBid(itemId, bidId) {
         });
     });
 }
+
+router.post('/apply-quit', authenticated, (req, res) => {
+    const userId = req.session.user.id;
+
+    db.get(
+        `SELECT * FROM QuitRequests WHERE user_id = ? AND status = 'pending'`,
+        [userId],
+        (err, quitRequest) => {
+            if (err) {
+                return res.redirect('/user/dashboard?error=Error checking quit request status.');
+            }
+
+            if (quitRequest) {
+                return res.redirect('/user/dashboard?error=You have already submitted a quit request.');
+            }
+
+            db.run(
+                `INSERT INTO QuitRequests (user_id, status) VALUES (?, 'pending')`,
+                [userId],
+                function (err) {
+                    if (err) {
+                        return res.redirect('/user/dashboard?error=Unable to apply for account deletion.');
+                    }
+
+                    req.session.success = 'Your request to quit the system has been submitted.';
+                    res.redirect('/user/dashboard');
+                }
+            );
+        }
+    );
+});
 
 module.exports = router;

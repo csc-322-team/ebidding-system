@@ -1,0 +1,38 @@
+<h2>Manage Complaints</h2>
+
+<table border="1">
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th>Complainant</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <% if (complaints.length > 0) { %>
+            <% complaints.forEach(complaint => { %>
+                <tr>
+                    <td><%= complaint.item_name %></td>
+                    <td><%= complaint.complainant_username %></td>
+                    <td><%= complaint.description %></td>
+                    <td><%= complaint.status %></td>
+                    <td>
+                        <% if (complaint.status === 'open') { %>
+                            <form action="/superuser/complaints/<%= complaint.id %>/resolve" method="POST" style="display: inline;">
+                                <button type="submit">Resolve</button>
+                            </form>
+                        <% } else { %>
+                            Resolved
+                        <% } %>
+                    </td>
+                </tr>
+            <% }); %>
+        <% } else { %>
+            <tr>
+                <td colspan="5">No complaints to display.</td>
+            </tr>
+        <% } %>
+    </tbody>
+</table>

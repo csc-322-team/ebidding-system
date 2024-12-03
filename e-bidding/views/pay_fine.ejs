@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pay Fine</title>
+</head>
+<body>
+    <h1><%= message %></h1>
+    <p>Your fine due: $<%= fineDue %></p>
+    <% if (error) { %>
+        <p style="color: red;"><%= error %></p>
+    <% } %>
+    <form action="/auth/pay_fine" method="post">
+        <input type="hidden" name="username" value="<%= username %>" />
+        <label for="paymentAmount">Payment Amount:</label>
+        <input type="number" id="paymentAmount" name="paymentAmount" required>
+        <button type="submit">Pay</button>
+    </form>
+</body>
+</html>

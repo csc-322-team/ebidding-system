@@ -86,10 +86,13 @@ db.serialize(() => {
     db.run(`
         CREATE TABLE IF NOT EXISTS Complaints (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            complainant_id INTEGER,
-            target_id INTEGER,
+            transaction_id INTEGER NOT NULL,
+            complainant_id INTEGER NOT NULL,
+            target_id INTEGER NOT NULL,
             description TEXT NOT NULL,
             status TEXT CHECK(status IN ('open', 'resolved')) DEFAULT 'open',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(transaction_id) REFERENCES Transactions(id),
             FOREIGN KEY(complainant_id) REFERENCES Users(id),
             FOREIGN KEY(target_id) REFERENCES Users(id)
         );
@@ -133,6 +136,16 @@ db.serialize(() => {
             FOREIGN KEY(recipient_id) REFERENCES Users(id)
         );
     `);    
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS QuitRequests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            status TEXT CHECK(status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES Users(id)
+        );
+    `);  
     
 });
 

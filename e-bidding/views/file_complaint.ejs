@@ -1,0 +1,7 @@
+<h2>File a Complaint for <%= transaction.item_name %></h2>
+<form action="/items/<%= transaction.item_id %>/complaint" method="POST">
+    <label for="description">Describe the issue:</label><br>
+    <textarea id="description" name="description" rows="5" required></textarea><br>
+    <button type="submit">Submit Complaint</button>
+    <a href="/user/dashboard">Cancel</a>
+</form>

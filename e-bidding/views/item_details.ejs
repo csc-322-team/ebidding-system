@@ -91,6 +91,10 @@
 <% } %>
 <hr style="margin: 10px 0;">
 
+<% if (item.status === 'closed' && (isPurchaser || user.id === item.owner_id)) { %>
+    <a href="/items/<%= item.id %>/complaint">File a Complaint</a>
+<% } %>
+
 <h3>Comments</h3>
 <ul>
     <% comments.forEach(comment => { %>

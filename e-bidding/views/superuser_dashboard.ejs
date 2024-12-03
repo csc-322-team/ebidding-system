@@ -26,3 +26,68 @@
         </li>
     <% }) %>
 </ul>
+
+<h3>Suspended Users</h3>
+<table border="1">
+    <thead>
+        <tr>
+            <th>Username</th>
+            <th>Fine Due</th>
+            <th>Suspension Count</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <% if (suspended && suspended.length > 0) { %>
+            <% suspended.forEach(user => { %>
+                <tr>
+                    <td><%= user.username %></td>
+                    <td>$<%= user.suspension_fine_due %></td>
+                    <td><%= user.suspension_count %></td>
+                    <td>
+                        <form action="/superuser/reinstate" method="POST" style="display: inline;">
+                            <input type="hidden" name="username" value="<%= user.username %>">
+                            <button type="submit">Reinstate</button>
+                        </form>
+                    </td>
+                </tr>
+            <% }); %>
+        <% } else { %>
+            <tr>
+                <td colspan="4">No suspended users at the moment.</td>
+            </tr>
+        <% } %>
+    </tbody>
+</table>
+
+<h3>Pending Quit Requests</h3>
+<ul>
+    <% if (requests && requests.length > 0) { %>
+        <% requests.forEach(request => { %>
+            <li>
+                <strong><%= request.username %></strong> (<%= request.email %>)
+                <form action="/superuser/quit-requests/<%= request.id %>/approve" method="POST" style="display: inline;">
+                    <button type="submit">Approve Quit</button>
+                </form>
+                <form action="/superuser/quit-requests/<%= request.id %>/reject" method="POST" style="display: inline;">
+                    <button type="submit">Reject Quit</button>
+                </form>
+            </li>
+        <% }); %>
+    <% } else { %>
+        <p>No pending quit requests.</p>
+    <% } %>
+</ul>
+
+<h3>Reinstate Suspended Users</h3>
+<form action="/superuser/reinstate" method="POST">
+    <label for="username">Enter Username to Reinstate:</label>
+    <input type="text" name="username" id="username" required>
+    <button type="submit">Reinstate User</button>
+</form>
+
+<form action="/superuser/evaluate-vip-status" method="POST" style="display:inline;">
+    <button type="submit" class="btn btn-primary">Evaluate VIP Status</button>
+</form>
+
+<a href="/superuser/complaints">Manage Complaints</a>

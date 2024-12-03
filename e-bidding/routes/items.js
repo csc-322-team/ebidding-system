@@ -23,31 +23,71 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 router.get('/list', (req, res) => {
-    db.all(`SELECT * FROM Items WHERE status = 'active' ORDER BY created_at DESC`, [], (err, rows) => {
-        if (err) {
-            return res.render('redirect', {
-                message: 'Database Error',
-                details: 'Unable to retrieve items at this time',
-                redirectUrl: '/'
+    const now = new Date().toISOString(); 
+
+    db.run(
+        `UPDATE Items 
+         SET status = 'closed' 
+         WHERE deadline_date < ? AND status = 'active'`,
+        [now],
+        (err) => {
+            if (err) {
+                console.error('Error updating item statuses:', err.message);
+                return res.render('redirect', {
+                    message: 'Database Error',
+                    details: 'Unable to update item statuses',
+                    redirectUrl: '/'
+                });
+            }
+
+            db.all(`SELECT * FROM Items WHERE status = 'active' ORDER BY created_at DESC`, [], (err, rows) => {
+                if (err) {
+                    console.error('Error retrieving items:', err.message);
+                    return res.render('redirect', {
+                        message: 'Database Error',
+                        details: 'Unable to retrieve items',
+                        redirectUrl: '/'
+                    });
+                }
+
+                res.render('items', { items: rows });
             });
         }
-        res.render('items', { items: rows });
-    });
+    );
 });
-
 router.get('/my-items', authenticate_token, (req, res) => {
     const userId = req.user.id;
+    const now = new Date().toISOString();
 
-    db.all(`SELECT * FROM Items WHERE owner_id = ?`, [userId], (err, rows) => {
-        if (err) {
-            return res.render('redirect', {
-                message: 'Database Error',
-                details: 'Unable to retrieve your items',
-                redirectUrl: '/user/dashboard'
+    db.run(
+        `UPDATE Items 
+         SET status = 'closed' 
+         WHERE deadline_date < ? AND status = 'active' AND owner_id = ?`,
+        [now, userId],
+        (err) => {
+            if (err) {
+                console.error('Error updating user item statuses:', err.message);
+                return res.render('redirect', {
+                    message: 'Database Error',
+                    details: 'Unable to update item statuses',
+                    redirectUrl: '/user/dashboard'
+                });
+            }
+
+            db.all(`SELECT * FROM Items WHERE owner_id = ? ORDER BY created_at DESC`, [userId], (err, rows) => {
+                if (err) {
+                    console.error('Error retrieving items:', err.message);
+                    return res.render('redirect', {
+                        message: 'Database Error',
+                        details: 'Unable to retrieve your items',
+                        redirectUrl: '/user/dashboard'
+                    });
+                }
+
+                res.json(rows);
             });
         }
-        res.json(rows);
-    });
+    );
 });
 
 router.get('/add', (req, res) => {
@@ -82,10 +122,14 @@ router.post('/add', upload.single('image'), (req, res) => {
         });
     }
 
-    const selected_date = new Date(deadline_date);
+    const selectedDate = new Date(deadline_date);
+    const correctedDate = new Date(
+        selectedDate.getTime() + selectedDate.getTimezoneOffset() * 60000
+    );
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (selected_date < today) {
+    if (correctedDate < today) {
         return res.render('redirect', {
             message: 'Invalid Date',
             details: 'Deadline cannot be set to a past date',
@@ -93,16 +137,15 @@ router.post('/add', upload.single('image'), (req, res) => {
         });
     }
 
-    const deadline_day = selected_date.toLocaleDateString('en-US');
-
     const created_at = new Date().toISOString();
 
     db.run(
         `INSERT INTO Items (owner_id, name, description, starting_price, current_price, image_url, type, deadline_date, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [owner_id, name, description, starting_price, starting_price, imageUrl, type, deadline_day, created_at],
+        [owner_id, name, description, starting_price, starting_price, imageUrl, type, correctedDate.toISOString(), created_at],
         function (err) {
             if (err) {
+                console.error('Error inserting item:', err.message);
                 return res.render('redirect', {
                     message: 'Database Error',
                     details: 'Unable to add item at this time',
@@ -138,7 +181,6 @@ router.get('/:id', (req, res) => {
                 const isPurchaser = transaction && transaction.buyer_id === currentUserId;
                 const isSeller = transaction && transaction.seller_id === currentUserId;
 
-                // Get existing review (if any)
                 db.get(
                     `SELECT Reviews.*, Users.username as reviewer_name
                      FROM Reviews
@@ -146,7 +188,7 @@ router.get('/:id', (req, res) => {
                      WHERE Reviews.transaction_id = ? AND Reviews.reviewer_id = ?`,
                     [transaction?.id, currentUserId],
                     (err, review) => {
-                        // Get comments
+
                         db.all(`SELECT * FROM Comments WHERE item_id = ?`, [itemId], (err, comments) => {
                             if (err) {
                                 return res.render('redirect', {
@@ -156,7 +198,6 @@ router.get('/:id', (req, res) => {
                                 });
                             }
 
-                            // Get bids
                             db.all(
                                 `SELECT Bids.id, Bids.bid_amount, Users.username
                                  FROM Bids
@@ -489,5 +530,98 @@ router.post('/:id/review', (req, res) => {
         }
     );
 });
+
+router.get('/:id/complaint', (req, res) => {
+    if (!req.session.user) {
+        return res.render('redirect', {
+            message: 'Authentication Required',
+            details: 'Please login to file a complaint',
+            redirectUrl: '/auth/login'
+        });
+    }
+
+    const itemId = req.params.id;
+    const userId = req.session.user.id;
+
+    db.get(
+        `SELECT t.*, i.name as item_name, u.username as target_user
+         FROM Transactions t
+         JOIN Items i ON t.item_id = i.id
+         JOIN Users u ON t.seller_id = u.id OR t.buyer_id = u.id
+         WHERE t.item_id = ? AND (t.buyer_id = ? OR t.seller_id = ?)`,
+        [itemId, userId, userId],
+        (err, transaction) => {
+            if (err || !transaction) {
+                return res.render('redirect', {
+                    message: 'Transaction Not Found',
+                    details: 'You can only file complaints for completed transactions.',
+                    redirectUrl: `/items/${itemId}`
+                });
+            }
+
+            res.render('file_complaint', {
+                transaction,
+                user: req.session.user
+            });
+        }
+    );
+});
+
+router.post('/:id/complaint', (req, res) => {
+    const itemId = req.params.id;
+    const { description } = req.body;
+    const userId = req.session.user.id;
+
+    if (!description || description.trim() === '') {
+        return res.redirect(`/items/${itemId}/complaint?error=Complaint description is required`);
+    }
+
+    db.get(
+        `SELECT t.*, i.owner_id, i.name as item_name
+         FROM Transactions t
+         JOIN Items i ON t.item_id = i.id
+         WHERE t.item_id = ? AND (t.buyer_id = ? OR t.seller_id = ?)`,
+        [itemId, userId, userId],
+        (err, transaction) => {
+            if (err || !transaction) {
+                return res.redirect(`/items/${itemId}/complaint?error=Invalid transaction`);
+            }
+
+            const targetId = transaction.buyer_id === userId ? transaction.seller_id : transaction.buyer_id;
+
+            db.run(
+                `INSERT INTO Complaints (transaction_id, complainant_id, target_id, description)
+                 VALUES (?, ?, ?, ?)`,
+                [transaction.id, userId, targetId, description],
+                function (err) {
+                    if (err) {
+                        return res.redirect(`/items/${itemId}/complaint?error=Unable to file complaint`);
+                    }
+                    res.redirect('/user/dashboard?success=Complaint filed successfully');
+                }
+            );
+        }
+    );
+});
+
+const completeTransaction = (itemId, buyerId, sellerId, amount) => {
+    db.get(`SELECT is_vip FROM Users WHERE id = ?`, [buyerId], (err, user) => {
+        if (err) {
+            console.error('Error fetching user details:', err.message);
+            return;
+        }
+
+        const finalAmount = user.is_vip ? amount * 0.9 : amount;
+
+        db.serialize(() => {
+            db.run(`UPDATE Users SET balance = balance - ? WHERE id = ?`, [finalAmount, buyerId]);
+            db.run(`UPDATE Users SET balance = balance + ? WHERE id = ?`, [finalAmount, sellerId]);
+            db.run(`UPDATE Items SET status = 'closed' WHERE id = ?`, [itemId]);
+            db.run(`INSERT INTO Transactions (item_id, buyer_id, seller_id, amount) VALUES (?, ?, ?, ?)`, [
+                itemId, buyerId, sellerId, finalAmount,
+            ]);
+        });
+    });
+};
 
 module.exports = router;

@@ -7,6 +7,8 @@ const superuser_routes = require('./routes/superuser');
 const items_routes = require('./routes/items');
 const expressLayouts = require('express-ejs-layouts');
 const session = require('express-session');
+const { evaluateSuspensions } = require('./helpers/suspension');
+const { evaluateVIPStatus } = require('./helpers/vip');
 
 const app = express();
 const PORT = 3000;
@@ -39,6 +41,9 @@ app.use('/auth', auth_routes);
 app.use('/user', user_routes);
 app.use('/superuser', superuser_routes);
 app.use('/items', items_routes);
+
+evaluateVIPStatus();
+evaluateSuspensions();
 
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
