@@ -53,30 +53,30 @@ If cancelled, return back to individual item view.
 If submitted, review is left on owner U’s profile
 Check Poor Review Suspension scenario. (Described later)
 
- [ ] Direct Complaints:
+ [X] Direct Complaints:
 U can access individual item views of purchased items or services. Because they have purchased it, they will also have the option now to file a complaint to S.
 Pressing this button opens a form where U can write a description to send.
 If canceled, U will return to the item view.
 If it is empty, an error will pop up. If it is filled and submitted, the U will receive a confirmation message and will return to item view.
 This complaint will be added to S’s inbox in the database.
 
- [ ] Suspension:
+ [X] Suspension:
 If U has 3 evaluations with a rating less than 2, then U is suspended.
 If U leaves 3 or more ratings and has a rating average of less than 2 or greater than 4, U is suspended.
 Suspension is removed by U paying a $50 fine or gets reactivated by S.
 
- [ ] System Removal 
+ [X] System Removal 
 U requests to be removed from the system. S reviews the request and approves it. S removes U from the system
 After U gets 3 suspensions, S checks the suspension count and removes U. U cannot apply to S to be reinstated in the system; they must reapply with new information. 
 
- [ ] VIP status Elevation: 
+ [X] VIP status Elevation: 
 U has more than $5000 in the account, conducted more than 5 transactions, and has no complaints. S verifies all of this info in the database and elevates U to VIP status. 
 
- [ ] VIP benefits: 
+ [X] VIP benefits: 
 VIP receives 10% discount on each transaction, reducing the total amount they pay for purchases or rentals by 10%. 
 VIPs -instead of getting immediately suspended for complaints or low ratings- will instead get demoted.
 
- [ ] VIP demotion: 
+ [X] VIP demotion: 
 If VIP user either has less than $5000 in account, receives a complaint, or is suspended, they are moved back to U status. S checks for any of these before reverting their status to U. 
 
  [X] Record Access: 
