@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support</title>
+</head>
+<body>
+    <h1>Support Chatbot</h1>
+    <div id="chatbox">
+        <div id="messages"></div>
+        <input type="text" id="userInput" placeholder="Type your message...">
+        <button id="sendButton">Send</button>
+    </div>
+    <script>
+        const messagesDiv = document.getElementById('messages');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const chatHistory = [];
+
+        sendButton.addEventListener('click', async () => {
+            const userMessage = userInput.value.trim();
+            if (userMessage) {
+                sendButton.disabled = true;
+                chatHistory.push(`User: ${userMessage}`);
+                const userMessageDiv = document.createElement('div');
+                userMessageDiv.textContent = `User: ${userMessage}`;
+                messagesDiv.appendChild(userMessageDiv);
+
+                try {
+                    const response = await fetch('/support/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ chatHistory })
+                    });
+                    const data = await response.json();
+
+                    // Directly use the cleaned response from the backend
+                    const cleanedResponse = data.response;
+                    chatHistory.push(`Assistant: ${cleanedResponse}`);
+
+                    const botMessageDiv = document.createElement('div');
+                    botMessageDiv.textContent = `Assistant: ${cleanedResponse}`;
+                    messagesDiv.appendChild(botMessageDiv);
+                } catch (error) {
+                    console.error('Error:', error);
+                } finally {
+                    sendButton.disabled = false;
+                }
+
+                userInput.value = '';
+            }
+        });
+    </script>
+
+</body>
+</html>

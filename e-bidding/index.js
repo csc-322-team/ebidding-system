@@ -5,6 +5,7 @@ const auth_routes = require('./routes/auth');
 const user_routes = require('./routes/user');
 const superuser_routes = require('./routes/superuser');
 const items_routes = require('./routes/items');
+const support_routes = require('./routes/support');
 const expressLayouts = require('express-ejs-layouts');
 const session = require('express-session');
 const { evaluateSuspensions } = require('./helpers/suspension');
@@ -41,6 +42,7 @@ app.use('/auth', auth_routes);
 app.use('/user', user_routes);
 app.use('/superuser', superuser_routes);
 app.use('/items', items_routes);
+app.use('/support', support_routes);
 
 evaluateVIPStatus();
 evaluateSuspensions();
