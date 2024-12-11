@@ -86,8 +86,14 @@
     <button type="submit">Reinstate User</button>
 </form>
 
-<form action="/superuser/evaluate-vip-status" method="POST" style="display:inline;">
-    <button type="submit" class="btn btn-primary">Evaluate VIP Status</button>
-</form>
+<h3>Administrative Actions</h3>
+<div style="margin-bottom: 20px;">
+    <form action="/superuser/evaluate-vip-status" method="POST" style="display:inline;">
+        <button type="submit" class="btn btn-primary">Evaluate VIP Status</button>
+    </form>
+    <form action="/superuser/evaluate-suspensions" method="POST" style="display:inline;">
+        <button type="submit" class="btn btn-warning">Evaluate Suspensions</button>
+    </form>
+</div>
 
 <a href="/superuser/complaints">Manage Complaints</a>
