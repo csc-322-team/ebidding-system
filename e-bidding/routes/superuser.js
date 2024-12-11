@@ -365,4 +365,22 @@ router.post('/evaluate-vip-status', superuser, (req, res) => {
     }
 });
 
+router.post('/evaluate-suspensions', superuser, (req, res) => {
+    try {
+        evaluateSuspensions();
+        res.render('redirect', {
+            message: 'Success',
+            details: 'Suspensions evaluated successfully.',
+            redirectUrl: '/superuser/superuser_dashboard',
+        });
+    } catch (err) {
+        console.error('Error evaluating suspensions:', err.message);
+        res.render('redirect', {
+            message: 'Error',
+            details: 'Failed to evaluate suspensions.',
+            redirectUrl: '/superuser/superuser_dashboard',
+        });
+    }
+});
+
 module.exports = router;
