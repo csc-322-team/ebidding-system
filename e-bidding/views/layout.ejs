@@ -1,15 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Bidding System</title>
+    <link rel="icon" href="/icon.png">
+    <title>E-Bidding</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+        :root {
+            font-family: 'Open Sans', Arial, Helvetica, sans-serif;
+        }
+        #nav-pages > a {
+            text-decoration: none;
+        }
+        #logout {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-left: 1em;
+            padding-left: 1em;
+            border-left: 1px solid black;
+            color: darkred;
+        }
+        
+        /* Items */
+        .sale {color: darkgreen;}
+        .rent {color: crimson;}
+    </style>
 </head>
-<body>
-    <header>
-        <h1>E-Bidding System</h1>
+
+<body style="margin: 0">
+    <header style="display: flex; justify-content: space-between; background-color: #0073; padding: 0 1em;">
+        <h1 style="display: flex; align-items: center;"><img src="/icon.png" style="width: 1.3em; height: 1.3em; margin-right: 10px">E-Bidding</h1>
         <nav style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
+            <div id="nav-pages" style="display: flex; gap: 1em;">
                 <a href="/">Home</a>
                 <a href="/items/list">Listings</a>
                 <% if (user) { %>
@@ -28,16 +54,22 @@
             <% if (user) { %>
                 <div>
                     <form action="/auth/logout" method="GET" style="display: inline;">
-                        <button type="submit" style="background: none; border: none; cursor: pointer; font-size: 1rem;">
-                            Logout
-                        </button>
+                        <button type="submit" id="logout">Logout from <%= user.username %></button>
                     </form>
                 </div>
             <% } %>
         </nav>
     </header>
-    <main>
+    
+    <main style="padding: 10px 40px;">
         <%- body %>
     </main>
+    
+    <script>
+        for (const time of document.querySelectorAll('time')) {
+            time.textContent = new Date(time.dateTime).toLocaleString();
+        }
+    </script>
 </body>
+
 </html>

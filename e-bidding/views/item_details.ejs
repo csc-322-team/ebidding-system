@@ -1,11 +1,22 @@
-<h2><%= item.name %></h2>
+<style>
+    textarea {
+        display: block;
+        font-family: inherit;
+        border: 1px solid darkblue;
+        border-radius: 10px;
+        min-width: min(400px, 90vw);
+        min-height: 4em;
+        padding: 8px;
+    }
+</style>
+
+<h2><span class="<%= item.type %>">For <%= item.type %>:</span> <%= item.name %></h2>
 <img src="<%= item.image_url %>" alt="<%= item.name %>" style="max-width: 300px; height: auto;">
 <p><strong>Description:</strong> <%= item.description %></p>
-<p><strong>Starting Price:</strong> $<%= item.starting_price %></p>
-<p><strong>Type:</strong> <%= item.type %></p>
+<p><strong>Starting Price:</strong> $<%= item.starting_price.toLocaleString() %></p>
 <p><strong>Status:</strong> <%= item.status %></p>
-<p><strong>Created At:</strong> <%= item.created_at %></p>
-<p><strong>Deadline:</strong> <%= item.deadline_date %></p>
+<p><strong>Created At:</strong> <time datetime="<%= item.created_at %>"></time></p>
+<p><strong>Deadline:</strong> <time datetime="<%= item.deadline_date %>"></time></p>
 
 <hr style="margin: 10px 0;">
 
