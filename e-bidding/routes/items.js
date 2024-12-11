@@ -33,21 +33,13 @@ router.get('/list', (req, res) => {
         (err) => {
             if (err) {
                 console.error('Error updating item statuses:', err.message);
-                return res.render('redirect', {
-                    message: 'Database Error',
-                    details: 'Unable to update item statuses',
-                    redirectUrl: '/'
-                });
+                return res.feedback('/', 'Unable to update item statuses', true);
             }
 
             db.all(`SELECT * FROM Items WHERE status = 'active' ORDER BY created_at DESC`, [], (err, rows) => {
                 if (err) {
                     console.error('Error retrieving items:', err.message);
-                    return res.render('redirect', {
-                        message: 'Database Error',
-                        details: 'Unable to retrieve items',
-                        redirectUrl: '/'
-                    });
+                    return res.feedback('/', 'Unable to retrieve items', true);
                 }
 
                 res.render('items', { items: rows });
@@ -67,21 +59,13 @@ router.get('/my-items', authenticate_token, (req, res) => {
         (err) => {
             if (err) {
                 console.error('Error updating user item statuses:', err.message);
-                return res.render('redirect', {
-                    message: 'Database Error',
-                    details: 'Unable to update item statuses',
-                    redirectUrl: '/user/dashboard'
-                });
+                return res.feedback('/user/dashboard', 'Unable to update item statuses', true);
             }
 
             db.all(`SELECT * FROM Items WHERE owner_id = ? ORDER BY created_at DESC`, [userId], (err, rows) => {
                 if (err) {
                     console.error('Error retrieving items:', err.message);
-                    return res.render('redirect', {
-                        message: 'Database Error',
-                        details: 'Unable to retrieve your items',
-                        redirectUrl: '/user/dashboard'
-                    });
+                    return res.feedback('/user/dashboard', 'Unable to retrieve your items', true);
                 }
 
                 res.json(rows);
@@ -91,36 +75,19 @@ router.get('/my-items', authenticate_token, (req, res) => {
 });
 
 router.get('/add', (req, res) => {
-    if (!req.session.user) {
-        return res.render('redirect', {
-            message: 'Authentication Required',
-            details: 'Please login to add items',
-            redirectUrl: '/auth/login'
-        });
-    }
+    if (!req.session.user) return res.feedback('/auth/login', 'Please login to add items.', true);
     res.render('add');
 });
 
 router.post('/add', upload.single('image'), (req, res) => {
-    if (!req.session.user) {
-        return res.render('redirect', {
-            message: 'Authentication Required',
-            details: 'Please login to add items',
-            redirectUrl: '/auth/login'
-        });
-    }
+    if (!req.session.user) return res.feedback('/auth/login', 'Please login to add items.', true);
 
     const { name, description, starting_price, type, deadline_date } = req.body;
     const owner_id = req.session.user.id;
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
-    if (!name || !starting_price || !type || !deadline_date) {
-        return res.render('redirect', {
-            message: 'Invalid Input',
-            details: 'All required fields must be filled',
-            redirectUrl: '/items/add'
-        });
-    }
+    if (!name || !starting_price || !type || !deadline_date)
+        return res.feedback('/items/add', 'All required fields must be filled.', true);
 
     const selectedDate = new Date(deadline_date);
     const correctedDate = new Date(
@@ -129,13 +96,8 @@ router.post('/add', upload.single('image'), (req, res) => {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (correctedDate < today) {
-        return res.render('redirect', {
-            message: 'Invalid Date',
-            details: 'Deadline cannot be set to a past date',
-            redirectUrl: '/items/add'
-        });
-    }
+    if (correctedDate < today)
+        return res.feedback('/items/add', 'Deadline cannot be set to a past date.', true);
 
     const created_at = new Date().toISOString();
 
@@ -146,17 +108,9 @@ router.post('/add', upload.single('image'), (req, res) => {
         function (err) {
             if (err) {
                 console.error('Error inserting item:', err.message);
-                return res.render('redirect', {
-                    message: 'Database Error',
-                    details: 'Unable to add item at this time',
-                    redirectUrl: '/items/add'
-                });
+                return res.feedback( '/items/add', 'Unable to add item at this time.', true);
             }
-            res.render('redirect', {
-                message: 'Success',
-                details: 'Item has been added successfully',
-                redirectUrl: '/items/list'
-            });
+            res.feedback('/items/list', 'Item has been added successfully');
         }
     );
 });
@@ -168,11 +122,7 @@ router.get('/:id', (req, res) => {
 
     db.get(`SELECT * FROM Items WHERE id = ?`, [itemId], (err, item) => {
         if (err || !item) {
-            return res.render('redirect', {
-                message: 'Item Not Found',
-                details: 'The requested item could not be found',
-                redirectUrl: '/items/list'
-            });
+            return res.feedback('/items/list', 'The requested item could not be found.', true);
         }
 
         db.get(
@@ -191,13 +141,7 @@ router.get('/:id', (req, res) => {
                     (err, review) => {
 
                         db.all(`SELECT * FROM Comments WHERE item_id = ?`, [itemId], (err, comments) => {
-                            if (err) {
-                                return res.render('redirect', {
-                                    message: 'Error Loading Comments',
-                                    details: 'Unable to retrieve comments for this item',
-                                    redirectUrl: '/items/list'
-                                });
-                            }
+                            if (err) return res.feedback('/items/list', 'Unable to retrieve comments for this item', true);
 
                             db.all(
                                 `SELECT Bids.id, Bids.bid_amount, Users.username
@@ -207,13 +151,7 @@ router.get('/:id', (req, res) => {
                                  ORDER BY Bids.bid_amount DESC`,
                                 [itemId],
                                 (err, bids) => {
-                                    if (err) {
-                                        return res.render('redirect', {
-                                            message: 'Error Loading Bids',
-                                            details: 'Unable to retrieve bids for this item',
-                                            redirectUrl: '/items/list'
-                                        });
-                                    }
+                                    if (err) return res.feedback('/items/list', 'Unable to retrieve bids for this item', true);
 
                                     res.render('item_details', {
                                         item,
@@ -237,11 +175,7 @@ router.get('/:id', (req, res) => {
 
 router.post('/:id/bid', (req, res) => {
     if (!req.session.user) {
-        return res.render('redirect', {
-            message: 'Authentication Required',
-            details: 'You must be logged in to place a bid',
-            redirectUrl: '/auth/login'
-        });
+        return res.feedback('/auth/login', 'You must be logged in to place a bid.', true);
     }
 
     const itemId = req.params.id;
@@ -254,11 +188,7 @@ router.post('/:id/bid', (req, res) => {
 
     db.get(`SELECT * FROM Items WHERE id = ? AND status = 'active'`, [itemId], (err, item) => {
         if (err || !item) {
-            return res.render('redirect', {
-                message: 'Item Unavailable',
-                details: 'Item not found or no longer active',
-                redirectUrl: '/items/list'
-            });
+            return res.feedback('/items/list', 'Item not found or no longer active.', true);
         }
 
         if (parseFloat(bidAmount) < parseFloat(item.starting_price)) {
@@ -266,16 +196,10 @@ router.post('/:id/bid', (req, res) => {
         }
 
         db.get(`SELECT balance FROM Users WHERE id = ?`, [bidderId], (err, user) => {
-            if (err) {
-                return res.render('redirect', {
-                    message: 'System Error',
-                    details: 'Unable to verify account balance',
-                    redirectUrl: `/items/${itemId}`
-                });
-            }
+            if (err) return res.feedback(`/items/${itemId}`, 'Unable to verify account balance', true);
 
             if (user.balance < bidAmount) {
-                return res.redirect(`/items/${itemId}?error=Insufficient balance.`);
+                return res.feedback(`/items/${itemId}`, 'Insufficient balance.', true);
             }
 
             db.run(
@@ -283,18 +207,8 @@ router.post('/:id/bid', (req, res) => {
                  VALUES (?, ?, ?, datetime('now', '+7 days'))`,
                 [itemId, bidderId, bidAmount],
                 function (err) {
-                    if (err) {
-                        return res.render('redirect', {
-                            message: 'Bid Failed',
-                            details: 'Unable to place bid at this time',
-                            redirectUrl: `/items/${itemId}`
-                        });
-                    }
-                    res.render('redirect', {
-                        message: 'Bid Placed',
-                        details: 'Your bid has been successfully recorded',
-                        redirectUrl: `/items/${itemId}`
-                    });
+                    if (err) return res.feedback(`/items/${itemId}`, 'Unable to place bid at this time', true);
+                    res.feedback(`/items/${itemId}`, 'Your bid has been successfully recorded.');
                 }
             );
         });
@@ -305,26 +219,14 @@ router.post('/:id/comment', (req, res) => {
     const itemId = req.params.id;
     const { content } = req.body;
     const author = req.session.user ? req.session.user.username : 'Guest';
-
-    if (!content) {
-        return res.render('redirect', {
-            message: 'Invalid Comment',
-            details: 'Comment cannot be empty',
-            redirectUrl: `/items/${itemId}`
-        });
-    }
+    
+    if (!content) return res.feedback(`/items/${itemId}`, 'Your comment cannot be empty.', true);
 
     db.run(
         `INSERT INTO Comments (item_id, author, content) VALUES (?, ?, ?)`,
         [itemId, author, content],
         function (err) {
-            if (err) {
-                return res.render('redirect', {
-                    message: 'Comment Failed',
-                    details: 'Unable to add comment at this time',
-                    redirectUrl: `/items/${itemId}`
-                });
-            }
+            if (err) return res.feedback(`/items/${itemId}`, 'Unable to add comment at this time', true);
             res.redirect(`/items/${itemId}`);
         }
     );
@@ -333,11 +235,7 @@ router.post('/:id/comment', (req, res) => {
 
 router.post('/:id/accept-bid', (req, res) => {
     if (!req.session.user) {
-        return res.render('redirect', {
-            message: 'Authentication Required',
-            details: 'Please login to accept bids',
-            redirectUrl: '/auth/login'
-        });
+        return res.feedback('/auth/login', 'Please login to accept bids.', true);
     }
 
     const itemId = req.params.id;
@@ -346,45 +244,25 @@ router.post('/:id/accept-bid', (req, res) => {
 
     db.get('SELECT * FROM Items WHERE id = ?', [itemId], (err, item) => {
         if (err || !item) {
-            return res.render('redirect', {
-                message: 'Item Not Found',
-                details: 'The requested item could not be found',
-                redirectUrl: '/user/dashboard'
-            });
+            return res.feedback('/user/dashboard', 'The requested item could not be found', true);
         }
 
         if (item.owner_id !== sellerId) {
-            return res.render('redirect', {
-                message: 'Not Authorized',
-                details: 'You are not authorized to accept bids for this item',
-                redirectUrl: `/items/${itemId}`
-            });
+            return res.feedback(`/items/${itemId}`, 'You are not authorized to accept bids for this item', true);
         }
 
         if (item.status !== 'active') {
-            return res.render('redirect', {
-                message: 'Item Not Active',
-                details: 'This item is no longer active for bidding',
-                redirectUrl: `/items/${itemId}`
-            });
+            return res.feedback(`/items/${itemId}`, 'This item is no longer active for bidding', true);
         }
 
         db.get('SELECT Bids.*, Users.balance FROM Bids JOIN Users ON Bids.bidder_id = Users.id WHERE Bids.id = ?',
             [bidId], (err, bid) => {
                 if (err || !bid) {
-                    return res.render('redirect', {
-                        message: 'Bid Not Found',
-                        details: 'The selected bid could not be found',
-                        redirectUrl: `/items/${itemId}`
-                    });
+                    return res.feedback(`/items/${itemId}`, 'The selected bid could not be found', true);
                 }
 
                 if (bid.balance < bid.bid_amount) {
-                    return res.render('redirect', {
-                        message: 'Insufficient Funds',
-                        details: 'Buyer has insufficient funds to complete the transaction',
-                        redirectUrl: `/items/${itemId}`
-                    });
+                    return res.feedback(`/items/${itemId}`, 'Buyer has insufficient funds to complete the transaction', true);
                 }
 
                 db.serialize(() => {
@@ -403,28 +281,16 @@ router.post('/:id/accept-bid', (req, res) => {
                         db.run(query, params, (err) => {
                             if (err) {
                                 db.run('ROLLBACK');
-                                return res.render('redirect', {
-                                    message: 'Transaction Failed',
-                                    details: 'Unable to complete the transaction',
-                                    redirectUrl: `/items/${itemId}`
-                                });
+                                return res.feedback(`/items/${itemId}`, 'Unable to complete the transaction', true);
                             }
                             completed++;
                             if (completed === updates.length) {
                                 db.run('COMMIT', (err) => {
                                     if (err) {
                                         db.run('ROLLBACK');
-                                        return res.render('redirect', {
-                                            message: 'Transaction Failed',
-                                            details: 'Failed to commit transaction',
-                                            redirectUrl: `/items/${itemId}`
-                                        });
+                                        return res.feedback(`/items/${itemId}`, 'Failed to commit transaction', true);
                                     }
-                                    res.render('redirect', {
-                                        message: 'Bid Accepted',
-                                        details: 'Transaction completed successfully',
-                                        redirectUrl: '/user/dashboard'
-                                    });
+                                    res.feedback('/user/dashboard', 'Transaction completed successfully');
                                 });
                             }
                         });
@@ -436,11 +302,7 @@ router.post('/:id/accept-bid', (req, res) => {
 
 router.post('/:id/review', (req, res) => {
     if (!req.session.user) {
-        return res.render('redirect', {
-            message: 'Authentication Required',
-            details: 'Please login to leave a review',
-            redirectUrl: '/auth/login'
-        });
+        return res.feedback('/auth/login', 'Please login to leave a review', true);
     }
 
     const itemId = req.params.id;
@@ -459,11 +321,7 @@ router.post('/:id/review', (req, res) => {
         [itemId, reviewerId, reviewerId],
         (err, transaction) => {
             if (err || !transaction) {
-                return res.render('redirect', {
-                    message: 'Not Authorized',
-                    details: 'You can only review items you have participated in',
-                    redirectUrl: `/items/${itemId}`
-                });
+                return res.feedback(`/items/${itemId}`, 'You can only review items you have participated in', true);
             }
 
             const recipientId =
@@ -477,11 +335,7 @@ router.post('/:id/review', (req, res) => {
                 [transaction.id, reviewerId],
                 (err, existingReview) => {
                     if (err) {
-                        return res.render('redirect', {
-                            message: 'System Error',
-                            details: 'Unable to verify existing reviews',
-                            redirectUrl: `/items/${itemId}`
-                        });
+                        return res.feedback(`/items/${itemId}`, 'Unable to verify existing reviews', true);
                     }
 
                     if (existingReview) {
@@ -492,17 +346,9 @@ router.post('/:id/review', (req, res) => {
                             [rating, description, transaction.id, reviewerId],
                             (err) => {
                                 if (err) {
-                                    return res.render('redirect', {
-                                        message: 'Review Update Failed',
-                                        details: 'Unable to update your review at this time',
-                                        redirectUrl: `/items/${itemId}`
-                                    });
+                                    return res.feedback(`/items/${itemId}`, 'Unable to update your review at this time', true);
                                 }
-                                res.render('redirect', {
-                                    message: 'Review Updated',
-                                    details: 'Your review has been updated successfully',
-                                    redirectUrl: `/items/${itemId}`
-                                });
+                                res.feedback(`/items/${itemId}`, 'Your review has been updated successfully.');
                             }
                         );
                     } else {
@@ -512,17 +358,9 @@ router.post('/:id/review', (req, res) => {
                             [transaction.id, reviewerId, recipientId, rating, description],
                             (err) => {
                                 if (err) {
-                                    return res.render('redirect', {
-                                        message: 'Review Failed',
-                                        details: 'Unable to submit your review at this time',
-                                        redirectUrl: `/items/${itemId}`
-                                    });
+                                    return res.feedback(`/items/${itemId}`, 'Unable to submit your review at this time', true);
                                 }
-                                res.render('redirect', {
-                                    message: 'Review Submitted',
-                                    details: 'Your review has been submitted successfully',
-                                    redirectUrl: `/items/${itemId}`
-                                });
+                                res.feedback(`/items/${itemId}`, 'Your review has been submitted successfully');
                             }
                         );
                     }
@@ -534,11 +372,7 @@ router.post('/:id/review', (req, res) => {
 
 router.get('/:id/complaint', (req, res) => {
     if (!req.session.user) {
-        return res.render('redirect', {
-            message: 'Authentication Required',
-            details: 'Please login to file a complaint',
-            redirectUrl: '/auth/login'
-        });
+        return res.feedback('/auth/login', 'Please login to file a complaint', true);
     }
 
     const itemId = req.params.id;
@@ -553,11 +387,7 @@ router.get('/:id/complaint', (req, res) => {
         [itemId, userId, userId],
         (err, transaction) => {
             if (err || !transaction) {
-                return res.render('redirect', {
-                    message: 'Transaction Not Found',
-                    details: 'You can only file complaints for completed transactions.',
-                    redirectUrl: `/items/${itemId}`
-                });
+                return res.feedback(`/items/${itemId}`, 'You can only file complaints for completed transactions.', true);
             }
 
             res.render('file_complaint', {

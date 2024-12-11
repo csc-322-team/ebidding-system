@@ -7,11 +7,7 @@ const systemPrompt = fs.readFileSync('system_prompt.txt', 'utf8');
 
 router.get('/', (req, res) => {
     if (!req.session || !req.session.user) {
-        return res.render('redirect', {
-            message: 'Access Denied',
-            details: 'You must be logged in to access the support page.',
-            redirectUrl: '/'
-        });
+        return res.feedback('/', 'You must be logged in to access the support page.', true);
     }
     res.render('support');
 });

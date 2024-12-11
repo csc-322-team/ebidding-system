@@ -34,6 +34,18 @@ app.use((req, res, next) => {
 app.set('view engine', 'ejs');
 app.set('layout', 'layout');
 
+// Initialize res.feedback as a helper for displaying messages to the user globally.
+// The message expires after the redirect is complete.
+app.use((req, res, next) => {
+    res.locals.feedback = req.session.feedback;
+    delete req.session.feedback;
+    res.feedback = (url, message, isError = false) => {
+        req.session.feedback = {message, isError};
+        res.redirect(url);
+    }
+    next();
+});
+
 app.get('/', (req, res) => {
     res.render('home', { message: 'Welcome to the E-Bidding System!' });
 });

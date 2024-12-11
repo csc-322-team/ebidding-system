@@ -48,15 +48,10 @@
                 `INSERT INTO Users (email, username, password, role, status) VALUES (?, ?, ?, ?, ?)`,
                 [fields.email, fields.username, hashedPassword, fields.role || 'V', status],
                 function (err) {
-                    if (err) {
-                        return error('Something went wrong while trying to register you.');
-                    }
-
-                    res.render('redirect', {
-                        message: status === 'approved' ? 'Superuser registered successfully.' : 'Registration successful.',
-                        details: status === 'approved' ? 'You may login with your new credentials.' : 'You may login after an admin approves your registration.',
-                        redirectUrl: '/'
-                    });
+                    if (err) return error('Something went wrong while trying to register you.');
+                    const message = status === 'approved' ? 'Superuser registered successfully. You may login with your new credentials.'
+                        : 'Registration successful. You may login after an admin approves your registration.';
+                    res.feedback('/', message);
                 }
             );
         });
@@ -64,7 +59,7 @@
 
     router.post('/login', (req, res) => {
         const { username, password } = req.body;
-        const error = (msg, code = 400) => res.status(code).render('login', { error: msg });
+        const error = msg => res.feedback('/auth/login', msg, true);
 
         if (!username || !password) {
             return error('Username and password are required.');

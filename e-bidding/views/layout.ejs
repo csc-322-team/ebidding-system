@@ -25,6 +25,24 @@
             color: darkred;
         }
         
+        /* Feedback */
+        #feedback-success, #feedback-error {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px;
+            border-radius: 7px;
+            margin-bottom: 20px;
+        }
+        #feedback-success {
+            border-left: 7px solid green;
+            background-color: lightgreen;
+        }
+        #feedback-error {
+            border-left: 7px solid crimson;
+            background-color: #ebb3b3;
+        }
+        
         /* Items */
         .sale {color: darkgreen;}
         .rent {color: crimson;}
@@ -62,6 +80,12 @@
     </header>
     
     <main style="padding: 10px 40px;">
+        <% if (typeof feedback !== 'undefined') { %>
+            <div id="feedback-<%= feedback.isError ? 'error' : 'success' %>">
+                <span><%= feedback.message %></span>
+                <strong style="font-size: 1.5em; line-height: 0; cursor: pointer;" onclick="this.parentNode.remove()">✕</strong>
+            </div>
+        <% } %>
         <%- body %>
     </main>
     
