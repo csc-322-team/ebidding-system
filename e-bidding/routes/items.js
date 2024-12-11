@@ -164,6 +164,7 @@ router.post('/add', upload.single('image'), (req, res) => {
 router.get('/:id', (req, res) => {
     const itemId = req.params.id;
     const currentUserId = req.session.user ? req.session.user.id : null;
+    const error = req.query.error || null;
 
     db.get(`SELECT * FROM Items WHERE id = ?`, [itemId], (err, item) => {
         if (err || !item) {
@@ -219,7 +220,7 @@ router.get('/:id', (req, res) => {
                                         comments,
                                         bids,
                                         user: req.session.user || null,
-                                        error: null,
+                                        error: error || null,
                                         isPurchaser,
                                         isSeller,
                                         review: review || null
