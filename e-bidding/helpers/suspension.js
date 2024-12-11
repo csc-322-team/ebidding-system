@@ -2,9 +2,9 @@ const db = require('../database');
 
 function evaluateSuspensions() {
     db.all(
-        `SELECT u.id, u.username, COUNT(r.id) as rating_count, AVG(r.score) as avg_rating, u.is_vip
+        `SELECT u.id, u.username, COUNT(r.id) as rating_count, AVG(r.rating) as avg_rating, u.is_vip
          FROM Users u
-         LEFT JOIN Ratings r ON u.id = r.to_user_id
+         LEFT JOIN Reviews r ON u.id = r.reviewer_id
          WHERE u.role = 'U'
          GROUP BY u.id`,
         (err, users) => {
@@ -15,8 +15,8 @@ function evaluateSuspensions() {
 
             users.forEach(user => {
                 if (user.is_vip) {
-                    if (user.rating_count >= 3 && user.avg_rating < 2) {
-                        demoteVIP(user.id, 'Low rating average');
+                    if (user.rating_count >= 3 && (user.avg_rating < 2 || user.avg_rating > 4)) {
+                        demoteVIP(user.id, 'Low rating average or too high rating average');
                     }
                 } else if (user.rating_count >= 3 && (user.avg_rating < 2 || user.avg_rating > 4)) {
                     suspendUser(user.id, `Average rating (${user.avg_rating.toFixed(1)}) is outside acceptable range.`);
