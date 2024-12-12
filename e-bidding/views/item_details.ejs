@@ -70,7 +70,7 @@
         <% } %>
 
         <% if (user) { %>
-            <% if (user.id === item.owner_id || isPurchaser) { %>
+            <% if (isPurchaser) { %>
                 <div class="review-form" style="margin-top: 30px;">
                     <h4>
                         <%= review
@@ -102,7 +102,7 @@
 <% } %>
 <hr style="margin: 10px 0;">
 
-<% if (item.status === 'closed' && (isPurchaser || user.id === item.owner_id)) { %>
+<% if (item.status === 'closed' && (isPurchaser || (user && user.id === item.owner_id))) { %>
     <a href="/items/<%= item.id %>/complaint">File a Complaint</a>
 <% } %>
 
