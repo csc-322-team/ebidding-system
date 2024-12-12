@@ -1,10 +1,4 @@
-1. There are 14 use-cases. Use basic HTML to display things, prioritze functionality
-
-2. Someone needs to set up the database and make the tables
-
-3. Pretty up the views after if we have time
-
----------------------------
+Complete use cases: 14/14
 
  [X] Browse:
 V is given a list of listed items to view.

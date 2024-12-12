@@ -6,7 +6,7 @@
 
 <p><strong>Overall Rating:</strong> <%= rating ? `${rating}/5` : 'No ratings yet' %></p>
 <p><strong>Account Status:</strong> <%= is_vip ? 'VIP' : 'Regular User' %></p>
-<p><strong>Balance:</strong> $<%= balance %></p>
+<p><strong>Balance:</strong> $<%= balance.toLocaleString() %></p>
 
 <% if (success) { %>
     <div class="success"><%= success %></div>
@@ -25,7 +25,7 @@
     <ul>
         <% items.forEach(item => { %>
             <li>
-                <strong><%= item.name %></strong>
+                <strong><%= item.name %> (for <%= item.type %>, <%= item.status %>)</strong>
                 - $<%= item.starting_price %>
                 <form action="/items/<%= item.id %>" method="GET" style="display: inline;">
                     <button type="submit">View</button>
@@ -65,8 +65,8 @@
         <% balanceHistory.forEach(transaction => { %>
             <li>
                 <%= transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1) %>:
-                $<%= transaction.amount %>
-                (<%= new Date(transaction.date).toLocaleString() %>)
+                $<%= transaction.amount.toLocaleString() %>
+                (<time datetime="<%= transaction.date %>"></time>)
             </li>
         <% }) %>
     </ul>
@@ -74,7 +74,7 @@
     <p>No balance history available.</p>
 <% } %>
 
-<h3>Your Balance: $<%= balance %></h3>
+<h3>Your Balance: $<%= balance.toLocaleString() %></h3>
 <form id="depositForm" action="/user/deposit" method="POST">
     <label for="deposit">Deposit Amount:</label>
     <input type="number" name="amount" id="deposit" required>

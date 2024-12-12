@@ -116,11 +116,7 @@ router.get('/superuser_dashboard', superuser, (req, res) => {
 
 router.get('/complaints', (req, res) => {
     if (!req.session.user || req.session.user.role !== 'S') {
-        return res.render('redirect', {
-            message: 'Access Denied',
-            details: 'You do not have access to this page',
-            redirectUrl: '/'
-        });
+        return res.feedback('/', 'You do not have access to this page', true);
     }
 
     db.all(
@@ -177,11 +173,7 @@ router.post('/quit-requests/:id/approve', (req, res) => {
 
     db.get(`SELECT user_id FROM QuitRequests WHERE id = ?`, [requestId], (err, request) => {
         if (err || !request) {
-            return res.render('redirect', {
-                message: 'Error',
-                details: 'Quit request not found or could not be processed.',
-                redirectUrl: '/superuser/superuser_dashboard'
-            });
+            return res.feedback('/superuser/superuser_dashboard', 'Quit request not found or could not be processed.', true);
         }
 
         const userId = request.user_id;
@@ -191,11 +183,7 @@ router.post('/quit-requests/:id/approve', (req, res) => {
             [userId],
             function (err) {
                 if (err) {
-                    return res.render('redirect', {
-                        message: 'Error',
-                        details: 'Error deleting user.',
-                        redirectUrl: '/superuser/superuser_dashboard'
-                    });
+                    return res.feedback('/superuser/superuser_dashboard', 'Error deleting user.', true);
                 }
 
                 db.run(
@@ -203,17 +191,9 @@ router.post('/quit-requests/:id/approve', (req, res) => {
                     [requestId],
                     function (err) {
                         if (err) {
-                            return res.render('redirect', {
-                                message: 'Error',
-                                details: 'Error updating quit request.',
-                                redirectUrl: '/superuser/superuser_dashboard'
-                            });
+                            return res.feedback('/superuser/superuser_dashboard', 'Error updating quit request.', true);
                         }
-                        res.render('redirect', {
-                            message: 'Success',
-                            details: 'Quit request approved successfully.',
-                            redirectUrl: '/superuser/superuser_dashboard'
-                        });
+                        res.feedback('/superuser/superuser_dashboard', 'Quit request approved successfully.');
                     }
                 );
             }
@@ -229,17 +209,9 @@ router.post('/quit-requests/:id/reject', (req, res) => {
         [requestId],
         function (err) {
             if (err) {
-                return res.render('redirect', {
-                    message: 'Error',
-                    details: 'Error rejecting quit request.',
-                    redirectUrl: '/superuser/superuser_dashboard'
-                });
+                return res.feedback('/superuser/superuser_dashboard', 'Error rejecting quit request.', true);
             }
-            res.render('redirect', {
-                message: 'Success',
-                details: 'Quit request rejected successfully.',
-                redirectUrl: '/superuser/superuser_dashboard'
-            });
+            res.feedback('/superuser/superuser_dashboard', 'Quit request rejected successfully.');
         }
     );
 });
@@ -252,11 +224,7 @@ router.post('/reinstate', superuser, (req, res) => {
         [username],
         (err, user) => {
             if (err || !user || user.status !== 'suspended') {
-                return res.render('redirect', {
-                    message: 'Error',
-                    details: 'Suspended user not found.',
-                    redirectUrl: '/superuser/superuser_dashboard'
-                });
+                return res.feedback('/superuser/superuser_dashboard', 'Suspended user not found.', true);
             }
 
             db.run(
@@ -264,17 +232,9 @@ router.post('/reinstate', superuser, (req, res) => {
                 [user.id],
                 function (err) {
                     if (err) {
-                        return res.render('redirect', {
-                            message: 'Error',
-                            details: 'Error reinstating user.',
-                            redirectUrl: '/superuser/superuser_dashboard'
-                        });
+                        return res.feedback('/superuser/superuser_dashboard', 'Error reinstating user.', true);
                     }
-                    res.render('redirect', {
-                        message: 'Success',
-                        details: `User ${username} reinstated successfully.`,
-                        redirectUrl: '/superuser/superuser_dashboard'
-                    });
+                    res.feedback('/superuser/superuser_dashboard', `User ${username} reinstated successfully.`);
                 }
             );
         }
@@ -368,18 +328,10 @@ router.post('/evaluate-vip-status', superuser, (req, res) => {
 router.post('/evaluate-suspensions', superuser, (req, res) => {
     try {
         evaluateSuspensions();
-        res.render('redirect', {
-            message: 'Success',
-            details: 'Suspensions evaluated successfully.',
-            redirectUrl: '/superuser/superuser_dashboard',
-        });
+        res.feedback('/superuser/superuser_dashboard', 'Suspensions evaluated successfully.');
     } catch (err) {
         console.error('Error evaluating suspensions:', err.message);
-        res.render('redirect', {
-            message: 'Error',
-            details: 'Failed to evaluate suspensions.',
-            redirectUrl: '/superuser/superuser_dashboard',
-        });
+        res.render('/superuser/superuser_dashboard', 'Failed to evaluate suspensions.', true);
     }
 });
 
