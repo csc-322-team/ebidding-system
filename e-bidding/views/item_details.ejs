@@ -57,26 +57,22 @@
 
 <% if (item.status === 'closed') { %>
     <hr style="margin: 10px 0;">
-    <h3>Review</h3>
+    <h3>Reviews</h3>
     <div class="review-section">
-        <% if (review) { %>
-            <div class="review">
-                <p><strong>Rating:</strong> <%= review.rating %>/5</p>
-                <!-- <strong>By:</strong> <%= review.reviewer_name %><br> -->
-                <strong>Review:</strong> <%= review.description %>
-            </div>
-        <% } else { %>
-            <p>No reviews yet.</p>
-        <% } %>
+        <div class="buyer-review">
+            <h4>Buyer's Review of Seller</h4>
+            <% if (buyerReview) { %>
+                <div class="review">
+                    <p><strong>Rating:</strong> <%= buyerReview.rating %>/5</p>
+                    <strong>Review:</strong> <%= buyerReview.description %>
+                </div>
+            <% } else { %>
+                <p>No buyer review yet.</p>
+            <% } %>
 
-        <% if (user) { %>
-            <% if (isPurchaser) { %>
+            <% if (user && isPurchaser) { %>
                 <div class="review-form" style="margin-top: 30px;">
-                    <h4>
-                        <%= review
-                            ? `Update Your Review for ${isPurchaser ? 'Seller' : 'Buyer'}`
-                            : `Leave a Review for ${isPurchaser ? 'Seller' : 'Buyer'}` %>
-                    </h4>
+                    <h4>Leave a Review for Seller</h4>
 
                     <% if (error) { %>
                         <p style="color: red;"><%= error %></p>
@@ -86,20 +82,59 @@
                         <div>
                             <label for="rating">Rating (1-5):</label>
                             <input type="number" id="rating" name="rating" min="1" max="5"
-                                value="<%= review ? review.rating : '' %>" required>
+                                value="<%= buyerReview ? buyerReview.rating : '' %>" required>
                         </div>
                         <div>
                             <label for="description">Review:</label>
-                            <textarea id="description" name="description" required><%= review ? review.description : '' %></textarea>
+                            <textarea id="description" name="description" required><%= buyerReview ? buyerReview.description : '' %></textarea>
                         </div>
-                        <button type="submit"><%= review ? 'Update Review' : 'Submit Review' %></button>
+                        <button type="submit"><%= buyerReview ? 'Update Review' : 'Submit Review' %></button>
                         <a href="/items/<%= item.id %>">Cancel</a>
                     </form>
                 </div>
             <% } %>
+        </div>
+
+        <% if (item.type === 'rent') { %>
+            <div class="owner-review">
+                <h4>Seller's Review of Buyer (Renter)</h4>
+                <% if (ownerReview) { %>
+                    <div class="review">
+                        <p><strong>Rating:</strong> <%= ownerReview.rating %>/5</p>
+                        <strong>Review:</strong> <%= ownerReview.description %>
+                    </div>
+                <% } else { %>
+                    <p>No seller review yet.</p>
+                <% } %>
+
+                <% if (user && isSeller) { %>
+                    <div class="review-form" style="margin-top: 30px;">
+                        <h4>Leave a Review for Buyer</h4>
+                        
+                        <% if (error) { %>
+                            <p style="color: red;"><%= error %></p>
+                        <% } %>
+
+                        <form action="/items/<%= item.id %>/review" method="POST">
+                            <div>
+                                <label for="rating">Rating (1-5):</label>
+                                <input type="number" id="rating" name="rating" min="1" max="5"
+                                    value="<%= ownerReview ? ownerReview.rating : '' %>" required>
+                            </div>
+                            <div>
+                                <label for="description">Review:</label>
+                                <textarea id="description" name="description" required><%= ownerReview ? ownerReview.description : '' %></textarea>
+                            </div>
+                            <button type="submit"><%= ownerReview ? 'Update Review' : 'Submit Review' %></button>
+                            <a href="/items/<%= item.id %>">Cancel</a>
+                        </form>
+                    </div>
+                <% } %>
+            </div>
         <% } %>
     </div>
 <% } %>
+
 <hr style="margin: 10px 0;">
 
 <% if (item.status === 'closed' && (isPurchaser || (user && user.id === item.owner_id))) { %>

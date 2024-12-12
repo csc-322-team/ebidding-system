@@ -126,23 +126,43 @@ router.get('/:id', (req, res) => {
         }
 
         db.get(
-            `SELECT * FROM Transactions WHERE item_id = ? AND (buyer_id = ? OR seller_id = ?)`,
-            [itemId, currentUserId, currentUserId],
+            `SELECT t.*, i.owner_id
+             FROM Transactions t
+             JOIN Items i ON t.item_id = i.id
+             WHERE t.item_id = ?`,
+            [itemId],
             (err, transaction) => {
-                const isPurchaser = transaction && transaction.buyer_id === currentUserId;
-                const isSeller = transaction && transaction.seller_id === currentUserId;
+                if (err) {
+                    return res.feedback('/items/list', 'Unable to retrieve transaction details.', true);
+                }
 
-                db.get(
+                const isPurchaser = transaction && transaction.buyer_id === currentUserId;
+                const isSeller = transaction && transaction.owner_id === currentUserId;
+
+                // Fetch all reviews for this transaction
+                db.all(
                     `SELECT Reviews.*, Users.username as reviewer_name
                      FROM Reviews
                      JOIN Users ON Reviews.reviewer_id = Users.id
-                     WHERE Reviews.transaction_id = ? AND Reviews.reviewer_id = ?`,
-                    [transaction?.id, currentUserId],
-                    (err, review) => {
+                     WHERE Reviews.transaction_id = ?`,
+                    [transaction?.id],
+                    (err, reviews) => {
+                        // Separate buyer and seller reviews
+                        const buyerReview = reviews.find(
+                            review => review.reviewer_id === transaction?.buyer_id && 
+                                      review.recipient_id === transaction?.owner_id
+                        ) || null;
 
+                        const ownerReview = reviews.find(
+                            review => review.reviewer_id === transaction?.owner_id && 
+                                      review.recipient_id === transaction?.buyer_id
+                        ) || null;
+
+                        // Fetch comments
                         db.all(`SELECT * FROM Comments WHERE item_id = ?`, [itemId], (err, comments) => {
                             if (err) return res.feedback('/items/list', 'Unable to retrieve comments for this item', true);
 
+                            // Fetch bids
                             db.all(
                                 `SELECT Bids.id, Bids.bid_amount, Users.username
                                  FROM Bids
@@ -161,7 +181,8 @@ router.get('/:id', (req, res) => {
                                         error: error || null,
                                         isPurchaser,
                                         isSeller,
-                                        review: review || null
+                                        buyerReview,
+                                        ownerReview
                                     });
                                 }
                             );
@@ -314,20 +335,27 @@ router.post('/:id/review', (req, res) => {
     }
 
     db.get(
-        `SELECT t.*, i.owner_id
+        `SELECT t.*, i.owner_id, i.type
          FROM Transactions t
          JOIN Items i ON t.item_id = i.id
-         WHERE t.item_id = ? AND (t.buyer_id = ? OR i.owner_id = ?)`,
+         WHERE t.item_id = ? AND (t.buyer_id = ? OR i.owner_id = ?)` ,
         [itemId, reviewerId, reviewerId],
         (err, transaction) => {
             if (err || !transaction) {
                 return res.feedback(`/items/${itemId}`, 'You can only review items you have participated in', true);
             }
 
-            const recipientId =
-                transaction.buyer_id === reviewerId
-                    ? transaction.owner_id 
-                    : transaction.buyer_id; 
+            let recipientId;
+
+            if (transaction.buyer_id === reviewerId) {
+                // Buyer reviewing the owner
+                recipientId = transaction.owner_id;
+            } else if (transaction.owner_id === reviewerId && transaction.type === 'rent') {
+                // Owner reviewing the renter
+                recipientId = transaction.buyer_id;
+            } else {
+                return res.feedback(`/items/${itemId}`, 'You are not authorized to leave a review for this transaction.', true);
+            }
 
             db.get(
                 `SELECT id FROM Reviews 
@@ -354,7 +382,7 @@ router.post('/:id/review', (req, res) => {
                     } else {
                         db.run(
                             `INSERT INTO Reviews (transaction_id, reviewer_id, recipient_id, rating, description)
-                             VALUES (?, ?, ?, ?, ?)`,
+                             VALUES (?, ?, ?, ?, ?)` ,
                             [transaction.id, reviewerId, recipientId, rating, description],
                             (err) => {
                                 if (err) {
