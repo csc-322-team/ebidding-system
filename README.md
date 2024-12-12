@@ -2,8 +2,6 @@
 
 A simple auction system built with Node.js.
 
-Check TODO.txt for things to work on.
-
 ## Running the Project
 
 0. Install dependencies: `npm install`
